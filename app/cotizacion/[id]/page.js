@@ -1,5 +1,17 @@
 import { supabase } from '../../lib/supabase'
 
+const LABELS_COSTOS = {
+  boleto: '✈️ Boleto aéreo',
+  traslados: '🚌 Traslados (A/P–HTL–A/P)',
+  traslados_interhoteles: '🚌 Traslados (Interhoteles)',
+  seguro: '🛡️ Seguro médico y de viaje',
+}
+
+function formatoUsd(valor) {
+  const n = Number(valor)
+  return isNaN(n) ? '0.00' : n.toFixed(2)
+}
+
 export default async function VerCotizacion({ params }) {
   const { id } = await params
 
@@ -20,9 +32,12 @@ export default async function VerCotizacion({ params }) {
   }
 
   const cliente = cotizacion.cliente
+  const habitaciones = cotizacion.habitaciones || []
+  const costosFijos = cotizacion.costos_fijos || {}
+  const hoteles = cotizacion.hoteles || []
 
   return (
-    <main style={{ padding: '2rem', maxWidth: '500px' }}>
+    <main style={{ padding: '2rem', maxWidth: '700px' }}>
       <h1>Cotización</h1>
 
       <h2>Cliente</h2>
@@ -53,13 +68,161 @@ export default async function VerCotizacion({ params }) {
           <p><strong>2do Destino:</strong> {cotizacion.destino2?.ciudad}, {cotizacion.destino2?.pais} ({cotizacion.dias_destino2} días)</p>
         </>
       )}
-
       <p><strong>Fecha de finalización (calculada):</strong> {cotizacion.fecha_finalizacion || '—'}</p>
 
       <hr style={{ margin: '1.5rem 0' }} />
 
-      <p><strong>Total:</strong> {cotizacion.total ? `$${cotizacion.total}` : '—'}</p>
-      <p><strong>Estado:</strong> {cotizacion.estado}</p>
+      <h2>Habitaciones y Pasajeros</h2>
+      {habitaciones.map((h, i) => (
+        <p key={i}>
+          <strong>Habitación {i + 1}</strong> ({h.composicion}): {h.adl} ADL
+          {h.chd > 0 && `, ${h.chd} CHD`}
+          {h.inf > 0 && `, ${h.inf} INF`}
+        </p>
+      ))}
+
+      <hr style={{ margin: '1.5rem 0' }} />
+
+      <h2>Costos Fijos (netos, por pasajero)</h2>
+      <table style={{ borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', padding: '0.3rem' }}>Concepto</th>
+            <th style={{ textAlign: 'left', padding: '0.3rem' }}>ADL</th>
+            <th style={{ textAlign: 'left', padding: '0.3rem' }}>CHD</th>
+            <th style={{ textAlign: 'left', padding: '0.3rem' }}>INF</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(costosFijos).map(([key, item]) => {
+            if (!item.checked) return null
+            const label = LABELS_COSTOS[key] || item.nombre || key
+            return (
+              <tr key={key}>
+                <td style={{ padding: '0.3rem' }}>{label}</td>
+                <td style={{ padding: '0.3rem' }}>${item.adl || 0}</td>
+                <td style={{ padding: '0.3rem' }}>${item.chd || 0}</td>
+                <td style={{ padding: '0.3rem' }}>${item.inf || 0}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      {cotizacion.no_incluye && (
+        <p style={{ marginTop: '0.75rem' }}><strong>No incluye:</strong> {cotizacion.no_incluye}</p>
+      )}
+
+      <hr style={{ margin: '1.5rem 0' }} />
+
+      <h2>Opciones de Hotel</h2>
+      {hoteles.map((hotel, hIndex) => (
+        hotel.modo === 'doble'
+          ? <OpcionHotelDoble key={hIndex} hotel={hotel} hIndex={hIndex} habitaciones={habitaciones} />
+          : <OpcionHotelUnico key={hIndex} hotel={hotel} hIndex={hIndex} habitaciones={habitaciones} />
+      ))}
     </main>
+  )
+}
+
+function OpcionHotelUnico({ hotel, hIndex, habitaciones }) {
+  return (
+    <div style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
+      <h3>Opción {hIndex + 1}: {hotel.nombre || '(sin nombre)'}</h3>
+      <p><strong>Régimen:</strong> {hotel.regimen} · <strong>Comisión:</strong> {hotel.comision}%</p>
+      {hotel.operador && <p><strong>Operador:</strong> {hotel.operador}</p>}
+      {hotel.noRefPrepago && (
+        <p style={{ color: '#a00' }}>Promoción 100% pre paga y en gastos totales (sin devolución)</p>
+      )}
+
+      {hotel.habitaciones.map((hab, habIndex) => {
+        const pax = habitaciones[habIndex]
+        return (
+          <div key={habIndex} style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px dashed #ccc' }}>
+            <p>
+              <strong>Habitación {habIndex + 1}</strong>
+              {hab.tipoHabitacion && ` — ${hab.tipoHabitacion}`}
+              {pax && ` (${pax.composicion})`}
+            </p>
+            <TablaResultadoHabitacion hab={hab} pax={pax} />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function OpcionHotelDoble({ hotel, hIndex, habitaciones }) {
+  return (
+    <div style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
+      <h3>Opción {hIndex + 1}</h3>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <BloqueHotelResultado titulo="Hotel — 1er destino" datos={hotel.hotel1} />
+        <BloqueHotelResultado titulo="Hotel — 2do destino" datos={hotel.hotel2} />
+      </div>
+
+      {hotel.habitaciones.map((hab, habIndex) => {
+        const pax = habitaciones[habIndex]
+        return (
+          <div key={habIndex} style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px dashed #ccc' }}>
+            <p>
+              <strong>Habitación {habIndex + 1}</strong>
+              {pax && ` (${pax.composicion})`}
+            </p>
+            {(hab.tipoHabitacion1 || hab.tipoHabitacion2) && (
+              <p style={{ fontSize: '0.85rem', color: '#555' }}>
+                {hab.tipoHabitacion1 && `1er destino: ${hab.tipoHabitacion1}`}
+                {hab.tipoHabitacion1 && hab.tipoHabitacion2 && ' · '}
+                {hab.tipoHabitacion2 && `2do destino: ${hab.tipoHabitacion2}`}
+              </p>
+            )}
+            <TablaResultadoHabitacion hab={hab} pax={pax} />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function BloqueHotelResultado({ titulo, datos }) {
+  return (
+    <div style={{ border: '1px solid #eee', padding: '0.6rem' }}>
+      <p style={{ fontWeight: 'bold' }}>{titulo}</p>
+      <p>{datos.nombre || '(sin nombre)'}</p>
+      <p style={{ fontSize: '0.85rem', color: '#555' }}>{datos.regimen} · Comisión {datos.comision}%</p>
+      {datos.operador && <p style={{ fontSize: '0.85rem' }}>Operador: {datos.operador}</p>}
+      {datos.noRefPrepago && (
+        <p style={{ fontSize: '0.8rem', color: '#a00' }}>Promoción 100% pre paga (sin devolución)</p>
+      )}
+    </div>
+  )
+}
+
+function TablaResultadoHabitacion({ hab, pax }) {
+  return (
+    <table style={{ borderCollapse: 'collapse' }}>
+      <thead>
+        <tr>
+          <th style={{ textAlign: 'left', padding: '0.3rem' }}></th>
+          <th style={{ textAlign: 'left', padding: '0.3rem' }}>ADL</th>
+          {pax?.chd > 0 && <th style={{ textAlign: 'left', padding: '0.3rem' }}>CHD</th>}
+          {pax?.inf > 0 && <th style={{ textAlign: 'left', padding: '0.3rem' }}>INF</th>}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style={{ padding: '0.3rem' }}><strong>Precio de venta</strong></td>
+          <td style={{ padding: '0.3rem' }}><strong>${hab.adl.venta || 0}</strong></td>
+          {pax?.chd > 0 && <td style={{ padding: '0.3rem' }}><strong>${hab.chd.venta || 0}</strong></td>}
+          {pax?.inf > 0 && <td style={{ padding: '0.3rem' }}><strong>${hab.inf.venta || 0}</strong></td>}
+        </tr>
+        <tr>
+          <td style={{ padding: '0.3rem', color: '#555' }}>Utilidad</td>
+          <td style={{ padding: '0.3rem' }}>${formatoUsd(hab.adl.utilidad)}</td>
+          {pax?.chd > 0 && <td style={{ padding: '0.3rem' }}>${formatoUsd(hab.chd.utilidad)}</td>}
+          {pax?.inf > 0 && <td style={{ padding: '0.3rem' }}>${formatoUsd(hab.inf.utilidad)}</td>}
+        </tr>
+      </tbody>
+    </table>
   )
 }

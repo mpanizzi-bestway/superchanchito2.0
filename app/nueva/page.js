@@ -28,6 +28,7 @@ function crearHabitacionHotelVacia() {
 
 function crearHotelVacio(cantidadHabitaciones, expandido = true) {
   return {
+    modo: 'unico',
     nombre: '',
     regimen: 'Solo Alojamiento',
     noRefPrepago: false,
@@ -35,6 +36,30 @@ function crearHotelVacio(cantidadHabitaciones, expandido = true) {
     comision: 17,
     expandido,
     habitaciones: Array.from({ length: cantidadHabitaciones }, crearHabitacionHotelVacia),
+  }
+}
+
+function crearHotelSimpleVacio() {
+  return { nombre: '', regimen: 'Solo Alojamiento', noRefPrepago: false, operador: '', comision: 17 }
+}
+
+function crearHabitacionDobleVacia() {
+  return {
+    tipoHabitacion1: '',
+    tipoHabitacion2: '',
+    adl: { costo1: '', costo2: '', venta: '', utilidad: '' },
+    chd: { costo1: '', costo2: '', venta: '', utilidad: '' },
+    inf: { costo1: '', costo2: '', venta: '', utilidad: '' },
+  }
+}
+
+function crearOpcionHotelDoble(cantidadHabitaciones, expandido = true) {
+  return {
+    modo: 'doble',
+    hotel1: crearHotelSimpleVacio(),
+    hotel2: crearHotelSimpleVacio(),
+    expandido,
+    habitaciones: Array.from({ length: cantidadHabitaciones }, crearHabitacionDobleVacia),
   }
 }
 
@@ -97,12 +122,22 @@ export default function NuevaCotizacion() {
 
   useEffect(() => {
     setHotelesOpciones(prev => prev.map(hotel => {
+      const crearVacia = hotel.modo === 'doble' ? crearHabitacionDobleVacia : crearHabitacionHotelVacia
       const habs = [...hotel.habitaciones]
-      while (habs.length < cantidadHabitaciones) habs.push(crearHabitacionHotelVacia())
+      while (habs.length < cantidadHabitaciones) habs.push(crearVacia())
       while (habs.length > cantidadHabitaciones) habs.pop()
       return { ...hotel, habitaciones: habs }
     }))
   }, [cantidadHabitaciones])
+
+  useEffect(() => {
+    setHotelesOpciones([
+      tipoDestino === 'doble'
+        ? crearOpcionHotelDoble(cantidadHabitaciones, true)
+        : crearHotelVacio(cantidadHabitaciones, true)
+    ])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoDestino])
 
   async function cargarDestinos() {
     const { data } = await supabase.from('destinos').select('id, ciudad, pais').order('ciudad')
@@ -155,7 +190,7 @@ export default function NuevaCotizacion() {
     return total
   }
 
-  // ---- Hoteles ----
+  // ---- Hoteles: Destino Único ----
   function calcularNeto(habIndex, tipo, costoHotel, comision = 17) {
     const cantidadPax = habitaciones[habIndex]?.[tipo] || 0
     if (!cantidadPax) return 0
@@ -170,7 +205,10 @@ export default function NuevaCotizacion() {
 
   function agregarOpcionHotel() {
     if (hotelesOpciones.length >= 4) return
-    setHotelesOpciones(prev => [...prev, crearHotelVacio(cantidadHabitaciones, true)])
+    const nueva = tipoDestino === 'doble'
+      ? crearOpcionHotelDoble(cantidadHabitaciones, true)
+      : crearHotelVacio(cantidadHabitaciones, true)
+    setHotelesOpciones(prev => [...prev, nueva])
   }
 
   function quitarOpcionHotel(hotelIndex) {
@@ -249,6 +287,95 @@ export default function NuevaCotizacion() {
     }))
   }
 
+  // ---- Hoteles: Doble Destino ----
+  function calcularNetoDoble(habIndex, tipo, costo1, comision1, costo2, comision2) {
+    const cantidadPax = habitaciones[habIndex]?.[tipo] || 0
+    if (!cantidadPax) return 0
+    const factor1 = 1 - (Number(comision1) / 100)
+    const factor2 = 1 - (Number(comision2) / 100)
+    const netoHotel = ((Number(costo1) * factor1) + (Number(costo2) * factor2)) / cantidadPax
+    return netoCostosFijosPorTipo(tipo) + netoHotel
+  }
+
+  function actualizarHotelSimpleCampo(hotelIndex, cual, campo, valor) {
+    setHotelesOpciones(prev => prev.map((h, i) => {
+      if (i !== hotelIndex) return h
+      return { ...h, [cual]: { ...h[cual], [campo]: valor } }
+    }))
+  }
+
+  function actualizarHabitacionDobleCampo(hotelIndex, habIndex, campo, valor) {
+    setHotelesOpciones(prev => prev.map((h, i) => {
+      if (i !== hotelIndex) return h
+      const habs = h.habitaciones.map((hb, j) => j === habIndex ? { ...hb, [campo]: valor } : hb)
+      return { ...h, habitaciones: habs }
+    }))
+  }
+
+  function actualizarCostoPasajeroDoble(hotelIndex, habIndex, tipo, cual, valor) {
+    setHotelesOpciones(prev => prev.map((h, i) => {
+      if (i !== hotelIndex) return h
+      const habs = h.habitaciones.map((hb, j) => {
+        if (j !== habIndex) return hb
+        const actual = { ...hb[tipo], [cual]: valor }
+        const neto = calcularNetoDoble(
+          habIndex, tipo,
+          actual.costo1, h.hotel1.comision,
+          actual.costo2, h.hotel2.comision
+        )
+        const venta = redondearVentaSugerida(neto)
+        const utilidad = venta - neto
+        return { ...hb, [tipo]: { ...actual, venta, utilidad } }
+      })
+      return { ...h, habitaciones: habs }
+    }))
+  }
+
+  function actualizarVentaManualDoble(hotelIndex, habIndex, tipo, valor) {
+    setHotelesOpciones(prev => prev.map((h, i) => {
+      if (i !== hotelIndex) return h
+      const habs = h.habitaciones.map((hb, j) => {
+        if (j !== habIndex) return hb
+        const neto = calcularNetoDoble(habIndex, tipo, hb[tipo].costo1, h.hotel1.comision, hb[tipo].costo2, h.hotel2.comision)
+        const venta = Number(valor) || 0
+        return { ...hb, [tipo]: { ...hb[tipo], venta, utilidad: venta - neto } }
+      })
+      return { ...h, habitaciones: habs }
+    }))
+  }
+
+  function actualizarUtilidadManualDoble(hotelIndex, habIndex, tipo, valor) {
+    setHotelesOpciones(prev => prev.map((h, i) => {
+      if (i !== hotelIndex) return h
+      const habs = h.habitaciones.map((hb, j) => {
+        if (j !== habIndex) return hb
+        const neto = calcularNetoDoble(habIndex, tipo, hb[tipo].costo1, h.hotel1.comision, hb[tipo].costo2, h.hotel2.comision)
+        const utilidad = Number(valor) || 0
+        return { ...hb, [tipo]: { ...hb[tipo], venta: neto + utilidad, utilidad } }
+      })
+      return { ...h, habitaciones: habs }
+    }))
+  }
+
+  function actualizarComisionDoble(hotelIndex, cual, valor) {
+    setHotelesOpciones(prev => prev.map((h, i) => {
+      if (i !== hotelIndex) return h
+      const nuevoHotel1 = cual === 'hotel1' ? { ...h.hotel1, comision: valor } : h.hotel1
+      const nuevoHotel2 = cual === 'hotel2' ? { ...h.hotel2, comision: valor } : h.hotel2
+      const habs = h.habitaciones.map((hb, j) => {
+        const nuevoHab = { ...hb }
+        ;['adl', 'chd', 'inf'].forEach(tipo => {
+          if (hb[tipo].costo1 !== '' || hb[tipo].costo2 !== '') {
+            const neto = calcularNetoDoble(j, tipo, hb[tipo].costo1, nuevoHotel1.comision, hb[tipo].costo2, nuevoHotel2.comision)
+            const venta = redondearVentaSugerida(neto)
+            nuevoHab[tipo] = { ...hb[tipo], venta, utilidad: venta - neto }
+          }
+        })
+        return nuevoHab
+      })
+      return { ...h, hotel1: nuevoHotel1, hotel2: nuevoHotel2, habitaciones: habs }
+    }))
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -316,7 +443,7 @@ export default function NuevaCotizacion() {
   }
 
   return (
-    <main style={{ padding: '2rem', maxWidth: '650px' }}>
+    <main style={{ padding: '2rem', maxWidth: '700px' }}>
       <h1>Nueva Cotización</h1>
       <form onSubmit={handleSubmit}>
 
@@ -562,7 +689,7 @@ export default function NuevaCotizacion() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ cursor: 'pointer' }} onClick={() => toggleExpandido(hIndex)}>
                 {hotel.expandido ? '▼' : '▶'} Opción {hIndex + 1}
-                {hotel.nombre && <span style={{ fontWeight: 'normal', color: '#555' }}> — {hotel.nombre}</span>}
+                {hotel.modo === 'unico' && hotel.nombre && <span style={{ fontWeight: 'normal', color: '#555' }}> — {hotel.nombre}</span>}
               </h3>
               {hIndex > 0 && (
                 <button type="button" onClick={() => quitarOpcionHotel(hIndex)} style={{ fontSize: '0.8rem' }}>
@@ -573,122 +700,247 @@ export default function NuevaCotizacion() {
 
             {hotel.expandido && (
               <>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                  <div>
-                    <label>Nombre del hotel</label><br />
-                    <input
-                      value={hotel.nombre}
-                      onChange={e => actualizarHotelCampo(hIndex, 'nombre', e.target.value)}
-                      placeholder="Ej: Hotel Fasano"
-                    />
-                  </div>
-                  <div>
-                    <label>Régimen</label><br />
-                    <select
-                      value={hotel.regimen}
-                      onChange={e => actualizarHotelCampo(hIndex, 'regimen', e.target.value)}
-                    >
-                      <option>Solo Alojamiento</option>
-                      <option>Desayuno Incluido</option>
-                      <option>Media Pensión</option>
-                      <option>Pensión Completa</option>
-                      <option>Todo Incluido</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={hotel.noRefPrepago}
-                      onChange={e => actualizarHotelCampo(hIndex, 'noRefPrepago', e.target.checked)}
-                    />
-                    {' '}NO REF/PREPAGO
-                  </label>
-                  <div>
-                    <label>Operador (opcional)</label><br />
-                    <input
-                      style={{ width: '180px' }}
-                      value={hotel.operador}
-                      onChange={e => actualizarHotelCampo(hIndex, 'operador', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label>Comm. %</label><br />
-                    <input
-                      type="number" style={{ width: '70px' }}
-                      value={hotel.comision}
-                      onChange={e => actualizarComision(hIndex, e.target.value)}
-                    />
-                  </div>
-                </div>
-                {hotel.noRefPrepago && (
-                  <p style={{ fontSize: '0.85rem', color: '#a00', marginTop: '0.5rem' }}>
-                    Se agregará: "Promoción 100% pre paga y en gastos totales (sin devolución)"
-                  </p>
-                )}
-
-                {hotel.habitaciones.map((hab, habIndex) => (
-                  <div key={habIndex} style={{ marginTop: '1rem', paddingTop: '0.5rem', borderTop: '1px dashed #ccc' }}>
-                    <h4>
-                      Habitación {habIndex + 1}{' '}
-                      <span style={{ fontWeight: 'normal', color: '#555', fontSize: '0.9rem' }}>
-                        ({resumenPax(habitaciones[habIndex])})
-                      </span>
-                    </h4>
-
-                    <div>
-                      <label>Tipo de habitación</label><br />
-                      <input
-                        value={hab.tipoHabitacion}
-                        onChange={e => actualizarHabitacionHotel(hIndex, habIndex, 'tipoHabitacion', e.target.value)}
-                        placeholder="Ej: Doble Standard"
+                {hotel.modo === 'doble' ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <BloqueHotelSimple
+                        titulo="Hotel — 1er destino"
+                        datos={hotel.hotel1}
+                        onCampo={(campo, valor) => actualizarHotelSimpleCampo(hIndex, 'hotel1', campo, valor)}
+                        onComision={valor => actualizarComisionDoble(hIndex, 'hotel1', valor)}
+                      />
+                      <BloqueHotelSimple
+                        titulo="Hotel — 2do destino"
+                        datos={hotel.hotel2}
+                        onCampo={(campo, valor) => actualizarHotelSimpleCampo(hIndex, 'hotel2', campo, valor)}
+                        onComision={valor => actualizarComisionDoble(hIndex, 'hotel2', valor)}
                       />
                     </div>
 
-                    <table style={{ marginTop: '0.75rem', borderCollapse: 'collapse', width: '100%' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: 'left', padding: '0.4rem' }}></th>
-                          <th style={{ textAlign: 'left', padding: '0.4rem' }}>ADL</th>
-                          {mostrarColumnaChd && <th style={{ textAlign: 'left', padding: '0.4rem' }}>CHD</th>}
-                          {mostrarColumnaInf && <th style={{ textAlign: 'left', padding: '0.4rem' }}>INF</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <FilaHotelCosto
-                          label="Costo comm. hotel (estadía total)"
-                          hotel={hotel} hIndex={hIndex} habIndex={habIndex} habitacionesPax={habitaciones[habIndex]}
-                          mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
-                          onCosto={actualizarCostoPasajero}
+                    {hotel.habitaciones.map((hab, habIndex) => (
+                      <div key={habIndex} style={{ marginTop: '1rem', paddingTop: '0.5rem', borderTop: '1px dashed #ccc' }}>
+                        <h4>
+                          Habitación {habIndex + 1}{' '}
+                          <span style={{ fontWeight: 'normal', color: '#555', fontSize: '0.9rem' }}>
+                            ({resumenPax(habitaciones[habIndex])})
+                          </span>
+                        </h4>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <div>
+                            <label>Tipo de habitación (1er destino)</label><br />
+                            <input
+                              value={hab.tipoHabitacion1}
+                              onChange={e => actualizarHabitacionDobleCampo(hIndex, habIndex, 'tipoHabitacion1', e.target.value)}
+                              placeholder="Ej: Doble Standard"
+                            />
+                            <table style={{ marginTop: '0.5rem', borderCollapse: 'collapse', width: '100%' }}>
+                              <thead>
+                                <tr>
+                                  <th></th>
+                                  <th style={{ textAlign: 'left', padding: '0.3rem' }}>ADL</th>
+                                  {mostrarColumnaChd && <th style={{ textAlign: 'left', padding: '0.3rem' }}>CHD</th>}
+                                  {mostrarColumnaInf && <th style={{ textAlign: 'left', padding: '0.3rem' }}>INF</th>}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <FilaHotelCostoDoble
+                                  label="Costo comm. hotel"
+                                  hab={hab} hIndex={hIndex} habIndex={habIndex} campo="costo1"
+                                  habitacionesPax={habitaciones[habIndex]}
+                                  mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                                  onCosto={actualizarCostoPasajeroDoble}
+                                />
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div>
+                            <label>Tipo de habitación (2do destino)</label><br />
+                            <input
+                              value={hab.tipoHabitacion2}
+                              onChange={e => actualizarHabitacionDobleCampo(hIndex, habIndex, 'tipoHabitacion2', e.target.value)}
+                              placeholder="Ej: Doble Standard"
+                            />
+                            <table style={{ marginTop: '0.5rem', borderCollapse: 'collapse', width: '100%' }}>
+                              <thead>
+                                <tr>
+                                  <th></th>
+                                  <th style={{ textAlign: 'left', padding: '0.3rem' }}>ADL</th>
+                                  {mostrarColumnaChd && <th style={{ textAlign: 'left', padding: '0.3rem' }}>CHD</th>}
+                                  {mostrarColumnaInf && <th style={{ textAlign: 'left', padding: '0.3rem' }}>INF</th>}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <FilaHotelCostoDoble
+                                  label="Costo comm. hotel"
+                                  hab={hab} hIndex={hIndex} habIndex={habIndex} campo="costo2"
+                                  habitacionesPax={habitaciones[habIndex]}
+                                  mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                                  onCosto={actualizarCostoPasajeroDoble}
+                                />
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <table style={{ marginTop: '0.75rem', borderCollapse: 'collapse', width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th></th>
+                              <th style={{ textAlign: 'left', padding: '0.4rem' }}>ADL</th>
+                              {mostrarColumnaChd && <th style={{ textAlign: 'left', padding: '0.4rem' }}>CHD</th>}
+                              {mostrarColumnaInf && <th style={{ textAlign: 'left', padding: '0.4rem' }}>INF</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <FilaHotelCalculada
+                              label="Neto por pasajero"
+                              hab={hab} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                              calcular={(tipo) => calcularNetoDoble(habIndex, tipo, hab[tipo].costo1, hotel.hotel1.comision, hab[tipo].costo2, hotel.hotel2.comision)}
+                            />
+                            <FilaHotelEditable
+                              label="Precio de venta sugerido"
+                              hab={hab} hIndex={hIndex} habIndex={habIndex} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                              campo="venta" onEditar={actualizarVentaManualDoble}
+                            />
+                            <FilaHotelEditable
+                              label="Utilidad (USD)"
+                              hab={hab} hIndex={hIndex} habIndex={habIndex} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                              campo="utilidad" onEditar={actualizarUtilidadManualDoble}
+                            />
+                            <FilaHotelPorcentaje
+                              hab={hab} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                            />
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                      <div>
+                        <label>Nombre del hotel</label><br />
+                        <input
+                          value={hotel.nombre}
+                          onChange={e => actualizarHotelCampo(hIndex, 'nombre', e.target.value)}
+                          placeholder="Ej: Hotel Fasano"
                         />
-                        <FilaHotelCalculada
-                          label="Neto por pasajero"
-                          hab={hab} habitacionesPax={habitaciones[habIndex]}
-                          mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
-                          calcular={(tipo) => calcularNeto(habIndex, tipo, hab[tipo].costo, hotel.comision)}
+                      </div>
+                      <div>
+                        <label>Régimen</label><br />
+                        <select
+                          value={hotel.regimen}
+                          onChange={e => actualizarHotelCampo(hIndex, 'regimen', e.target.value)}
+                        >
+                          <option>Solo Alojamiento</option>
+                          <option>Desayuno Incluido</option>
+                          <option>Media Pensión</option>
+                          <option>Pensión Completa</option>
+                          <option>Todo Incluido</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={hotel.noRefPrepago}
+                          onChange={e => actualizarHotelCampo(hIndex, 'noRefPrepago', e.target.checked)}
                         />
-                        <FilaHotelEditable
-                          label="Precio de venta sugerido"
-                          hab={hab} hIndex={hIndex} habIndex={habIndex} habitacionesPax={habitaciones[habIndex]}
-                          mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
-                          campo="venta" onEditar={actualizarVentaManual}
+                        {' '}NO REF/PREPAGO
+                      </label>
+                      <div>
+                        <label>Operador (opcional)</label><br />
+                        <input
+                          style={{ width: '180px' }}
+                          value={hotel.operador}
+                          onChange={e => actualizarHotelCampo(hIndex, 'operador', e.target.value)}
                         />
-                        <FilaHotelEditable
-                          label="Utilidad (USD)"
-                          hab={hab} hIndex={hIndex} habIndex={habIndex} habitacionesPax={habitaciones[habIndex]}
-                          mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
-                          campo="utilidad" onEditar={actualizarUtilidadManual}
+                      </div>
+                      <div>
+                        <label>Comm. %</label><br />
+                        <input
+                          type="number" style={{ width: '70px' }}
+                          value={hotel.comision}
+                          onChange={e => actualizarComision(hIndex, e.target.value)}
                         />
-                        <FilaHotelPorcentaje
-                          hab={hab} habitacionesPax={habitaciones[habIndex]}
-                          mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
-                        />
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
+                      </div>
+                    </div>
+                    {hotel.noRefPrepago && (
+                      <p style={{ fontSize: '0.85rem', color: '#a00', marginTop: '0.5rem' }}>
+                        Se agregará: "Promoción 100% pre paga y en gastos totales (sin devolución)"
+                      </p>
+                    )}
+
+                    {hotel.habitaciones.map((hab, habIndex) => (
+                      <div key={habIndex} style={{ marginTop: '1rem', paddingTop: '0.5rem', borderTop: '1px dashed #ccc' }}>
+                        <h4>
+                          Habitación {habIndex + 1}{' '}
+                          <span style={{ fontWeight: 'normal', color: '#555', fontSize: '0.9rem' }}>
+                            ({resumenPax(habitaciones[habIndex])})
+                          </span>
+                        </h4>
+
+                        <div>
+                          <label>Tipo de habitación</label><br />
+                          <input
+                            value={hab.tipoHabitacion}
+                            onChange={e => actualizarHabitacionHotel(hIndex, habIndex, 'tipoHabitacion', e.target.value)}
+                            placeholder="Ej: Doble Standard"
+                          />
+                        </div>
+
+                        <table style={{ marginTop: '0.75rem', borderCollapse: 'collapse', width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ textAlign: 'left', padding: '0.4rem' }}></th>
+                              <th style={{ textAlign: 'left', padding: '0.4rem' }}>ADL</th>
+                              {mostrarColumnaChd && <th style={{ textAlign: 'left', padding: '0.4rem' }}>CHD</th>}
+                              {mostrarColumnaInf && <th style={{ textAlign: 'left', padding: '0.4rem' }}>INF</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <FilaHotelCosto
+                              label="Costo comm. hotel (estadía total)"
+                              hotel={hotel} hIndex={hIndex} habIndex={habIndex} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                              onCosto={actualizarCostoPasajero}
+                            />
+                            <FilaHotelCalculada
+                              label="Neto por pasajero"
+                              hab={hab} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                              calcular={(tipo) => calcularNeto(habIndex, tipo, hab[tipo].costo, hotel.comision)}
+                            />
+                            <FilaHotelEditable
+                              label="Precio de venta sugerido"
+                              hab={hab} hIndex={hIndex} habIndex={habIndex} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                              campo="venta" onEditar={actualizarVentaManual}
+                            />
+                            <FilaHotelEditable
+                              label="Utilidad (USD)"
+                              hab={hab} hIndex={hIndex} habIndex={habIndex} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                              campo="utilidad" onEditar={actualizarUtilidadManual}
+                            />
+                            <FilaHotelPorcentaje
+                              hab={hab} habitacionesPax={habitaciones[habIndex]}
+                              mostrarChd={mostrarColumnaChd} mostrarInf={mostrarColumnaInf}
+                            />
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </>
+                )}
               </>
             )}
           </div>
@@ -863,6 +1115,75 @@ function FilaHotelPorcentaje({ hab, habitacionesPax, mostrarChd, mostrarInf }) {
       <td style={{ padding: '0.4rem' }}>{pct('adl')}</td>
       {mostrarChd && <td style={{ padding: '0.4rem' }}>{habitacionesPax?.chd > 0 ? pct('chd') : '—'}</td>}
       {mostrarInf && <td style={{ padding: '0.4rem' }}>{habitacionesPax?.inf > 0 ? pct('inf') : '—'}</td>}
+    </tr>
+  )
+}
+
+function BloqueHotelSimple({ titulo, datos, onCampo, onComision }) {
+  return (
+    <div style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
+      <p style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>{titulo}</p>
+      <div>
+        <label>Nombre del hotel</label><br />
+        <input value={datos.nombre} onChange={e => onCampo('nombre', e.target.value)} placeholder="Ej: Hotel Fasano" />
+      </div>
+      <div style={{ marginTop: '0.5rem' }}>
+        <label>Régimen</label><br />
+        <select value={datos.regimen} onChange={e => onCampo('regimen', e.target.value)}>
+          <option>Solo Alojamiento</option>
+          <option>Desayuno Incluido</option>
+          <option>Media Pensión</option>
+          <option>Pensión Completa</option>
+          <option>Todo Incluido</option>
+        </select>
+      </div>
+      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
+        <label>
+          <input type="checkbox" checked={datos.noRefPrepago} onChange={e => onCampo('noRefPrepago', e.target.checked)} />
+          {' '}NO REF/PREPAGO
+        </label>
+        <div>
+          <label>Operador</label><br />
+          <input style={{ width: '140px' }} value={datos.operador} onChange={e => onCampo('operador', e.target.value)} />
+        </div>
+        <div>
+          <label>Comm. %</label><br />
+          <input type="number" style={{ width: '60px' }} value={datos.comision} onChange={e => onComision(e.target.value)} />
+        </div>
+      </div>
+      {datos.noRefPrepago && (
+        <p style={{ fontSize: '0.8rem', color: '#a00', marginTop: '0.4rem' }}>
+          Promoción 100% pre paga y en gastos totales (sin devolución)
+        </p>
+      )}
+    </div>
+  )
+}
+
+function FilaHotelCostoDoble({ label, hab, hIndex, habIndex, campo, habitacionesPax, mostrarChd, mostrarInf, onCosto }) {
+  return (
+    <tr>
+      <td style={{ padding: '0.3rem' }}>{label}</td>
+      <td style={{ padding: '0.3rem' }}>
+        <input type="number" style={{ width: '70px' }} value={hab.adl[campo]}
+          onChange={e => onCosto(hIndex, habIndex, 'adl', campo, e.target.value)} />
+      </td>
+      {mostrarChd && (
+        <td style={{ padding: '0.3rem' }}>
+          {habitacionesPax?.chd > 0 ? (
+            <input type="number" style={{ width: '70px' }} value={hab.chd[campo]}
+              onChange={e => onCosto(hIndex, habIndex, 'chd', campo, e.target.value)} />
+          ) : '—'}
+        </td>
+      )}
+      {mostrarInf && (
+        <td style={{ padding: '0.3rem' }}>
+          {habitacionesPax?.inf > 0 ? (
+            <input type="number" style={{ width: '70px' }} value={hab.inf[campo]}
+              onChange={e => onCosto(hIndex, habIndex, 'inf', campo, e.target.value)} />
+          ) : '—'}
+        </td>
+      )}
     </tr>
   )
 }
