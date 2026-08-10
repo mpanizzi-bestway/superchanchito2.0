@@ -14,10 +14,12 @@ import {
 import { SeccionCliente } from '../components/SeccionCliente'
 import { SeccionViaje } from '../components/SeccionViaje'
 import { SeccionHabitaciones } from '../components/SeccionHabitaciones'
+import { SeccionItinerario } from '../components/SeccionItinerario'
 import { SeccionCostosFijos } from '../components/SeccionCostosFijos'
 import { FilaHotelCalculada, FilaHotelEditable, FilaHotelPorcentaje } from '../components/FilaHotelComun'
 import { FilaHotelCosto } from '../components/HotelUnico'
 import { BloqueHotelSimple, FilaHotelCostoDoble } from '../components/HotelDoble'
+import { parsearAmadeus } from '../lib/amadeus-parser'
 
 export default function NuevaCotizacion() {
   const router = useRouter()
@@ -52,6 +54,9 @@ export default function NuevaCotizacion() {
   // ----- Sección 3: Habitaciones y Pasajeros -----
   const [cantidadHabitaciones, setCantidadHabitaciones] = useState(1)
   const [habitaciones, setHabitaciones] = useState([{ adl: 2, chd: 0, inf: 0 }])
+
+  // ----- Sección 4: Itinerario Aéreo -----
+  const [itinerarioTexto, setItinerarioTexto] = useState('')
 
   // ----- Sección 5: Costos Fijos -----
   const [costosFijos, setCostosFijos] = useState({
@@ -359,6 +364,8 @@ export default function NuevaCotizacion() {
     const costosFijosGuardar = { ...costosFijos }
     if (tipoDestino === 'unico') delete costosFijosGuardar.traslados_interhoteles
 
+    const segmentosItinerario = parsearAmadeus(itinerarioTexto)
+
     const datosCotizacion = {
       cliente_id: cliente.id,
       cliente_nombre: `${nombre} ${apellido}`,
@@ -369,6 +376,7 @@ export default function NuevaCotizacion() {
       costos_fijos: costosFijosGuardar,
       hoteles: hotelesOpciones,
       no_incluye: noIncluye,
+      itinerario: segmentosItinerario.length > 0 ? segmentosItinerario : null,
     }
 
     if (tipoDestino === 'unico') {
@@ -432,6 +440,12 @@ export default function NuevaCotizacion() {
           cantidadHabitaciones={cantidadHabitaciones} handleCantidadHabitaciones={handleCantidadHabitaciones}
           habitaciones={habitaciones} actualizarHabitacion={actualizarHabitacion}
           mostrarColumnaChd={mostrarColumnaChd} mostrarColumnaInf={mostrarColumnaInf}
+        />
+
+        <hr style={{ margin: '1.5rem 0' }} />
+
+        <SeccionItinerario
+          itinerarioTexto={itinerarioTexto} setItinerarioTexto={setItinerarioTexto}
         />
 
         <hr style={{ margin: '1.5rem 0' }} />
