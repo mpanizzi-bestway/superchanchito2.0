@@ -11,7 +11,10 @@ import {
   redondearVentaSugerida,
 } from '../lib/calculos'
 
-import { FilaCosto, FilaCostoTour } from '../components/FilaCosto'
+import { SeccionCliente } from '../components/SeccionCliente'
+import { SeccionViaje } from '../components/SeccionViaje'
+import { SeccionHabitaciones } from '../components/SeccionHabitaciones'
+import { SeccionCostosFijos } from '../components/SeccionCostosFijos'
 import { FilaHotelCalculada, FilaHotelEditable, FilaHotelPorcentaje } from '../components/FilaHotelComun'
 import { FilaHotelCosto } from '../components/HotelUnico'
 import { BloqueHotelSimple, FilaHotelCostoDoble } from '../components/HotelDoble'
@@ -395,238 +398,47 @@ export default function NuevaCotizacion() {
       <h1>Nueva Cotización</h1>
       <form onSubmit={handleSubmit}>
 
-        <h2>Datos del Cliente</h2>
-        <div>
-          <label>Nombre</label><br />
-          <input value={nombre} onChange={e => setNombre(e.target.value)} required />
-        </div>
-        <div>
-          <label>Apellido</label><br />
-          <input value={apellido} onChange={e => setApellido(e.target.value)} required />
-        </div>
-        <div>
-          <label>Teléfono</label><br />
-          <input type="tel" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="+598 099 123 456" />
-        </div>
-        <div>
-          <label>Email</label><br />
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
-        </div>
-        <div>
-          <label>Origen de la consulta</label><br />
-          <select value={origenConsulta} onChange={e => setOrigenConsulta(e.target.value)}>
-            <option>Redes Sociales</option>
-            <option>Ex Cliente</option>
-            <option>Referido</option>
-            <option>Calle</option>
-            <option>Teléfono</option>
-            <option>Otros</option>
-          </select>
-        </div>
-        <div>
-          <label>
-            <input type="checkbox" checked={seguimiento} onChange={e => setSeguimiento(e.target.checked)} />
-            {' '}Marcar para seguimiento
-          </label>
-          {seguimiento && (
-            <p style={{ fontSize: '0.85rem', color: '#555' }}>
-              Se agendará seguimiento para dentro de 2 días a las 10:10 am.
-            </p>
-          )}
-        </div>
+        <SeccionCliente
+          nombre={nombre} setNombre={setNombre}
+          apellido={apellido} setApellido={setApellido}
+          telefono={telefono} setTelefono={setTelefono}
+          email={email} setEmail={setEmail}
+          origenConsulta={origenConsulta} setOrigenConsulta={setOrigenConsulta}
+          seguimiento={seguimiento} setSeguimiento={setSeguimiento}
+        />
 
         <hr style={{ margin: '1.5rem 0' }} />
 
-        <h2>Datos del Viaje</h2>
-        <div>
-          <label>
-            <input type="radio" name="tipoDestino" checked={tipoDestino === 'unico'} onChange={() => setTipoDestino('unico')} />
-            {' '}Destino Único
-          </label>{' '}
-          <label>
-            <input type="radio" name="tipoDestino" checked={tipoDestino === 'doble'} onChange={() => setTipoDestino('doble')} />
-            {' '}Doble Destino
-          </label>
-        </div>
-
-        <div>
-          <label>Fecha de inicio del viaje</label><br />
-          <input type="date" value={fechaInicioViaje} onChange={e => setFechaInicioViaje(e.target.value)} required />
-        </div>
-
-        {tipoDestino === 'unico' ? (
-          <>
-            <div>
-              <label>Destino</label><br />
-              <select value={destinoId} onChange={e => setDestinoId(e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Días en destino</label><br />
-              <input type="number" min="1" value={diasDestino} onChange={e => setDiasDestino(e.target.value)} required />
-            </div>
-          </>
-        ) : (
-          <>
-            <div>
-              <label>1er Destino</label><br />
-              <select value={destino1Id} onChange={e => setDestino1Id(e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Días en 1er Destino</label><br />
-              <input type="number" min="1" value={diasDestino1} onChange={e => setDiasDestino1(e.target.value)} required />
-            </div>
-            <div>
-              <label>2do Destino</label><br />
-              <select value={destino2Id} onChange={e => setDestino2Id(e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Días en 2do Destino</label><br />
-              <input type="number" min="1" value={diasDestino2} onChange={e => setDiasDestino2(e.target.value)} required />
-            </div>
-          </>
-        )}
-
-        <div style={{ marginTop: '1rem' }}>
-          <button type="button" onClick={() => setMostrarNuevoDestino(!mostrarNuevoDestino)}>
-            {mostrarNuevoDestino ? '▲ Agregar destino' : '▼ Agregar destino'}
-          </button>
-          {mostrarNuevoDestino && (
-            <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '0.5rem' }}>
-              <div>
-                <label>Nombre del nuevo destino (ciudad)</label><br />
-                <input value={nuevoDestinoCiudad} onChange={e => setNuevoDestinoCiudad(e.target.value)} />
-              </div>
-              <div>
-                <label>País</label><br />
-                <input value={nuevoDestinoPais} onChange={e => setNuevoDestinoPais(e.target.value)} />
-              </div>
-              <button type="button" onClick={handleAgregarDestino} disabled={guardandoDestino}>
-                {guardandoDestino ? 'Guardando...' : 'Guardar destino'}
-              </button>
-            </div>
-          )}
-        </div>
+        <SeccionViaje
+          tipoDestino={tipoDestino} setTipoDestino={setTipoDestino}
+          fechaInicioViaje={fechaInicioViaje} setFechaInicioViaje={setFechaInicioViaje}
+          destinoId={destinoId} setDestinoId={setDestinoId}
+          diasDestino={diasDestino} setDiasDestino={setDiasDestino}
+          destino1Id={destino1Id} setDestino1Id={setDestino1Id}
+          diasDestino1={diasDestino1} setDiasDestino1={setDiasDestino1}
+          destino2Id={destino2Id} setDestino2Id={setDestino2Id}
+          diasDestino2={diasDestino2} setDiasDestino2={setDiasDestino2}
+          destinos={destinos}
+          mostrarNuevoDestino={mostrarNuevoDestino} setMostrarNuevoDestino={setMostrarNuevoDestino}
+          nuevoDestinoCiudad={nuevoDestinoCiudad} setNuevoDestinoCiudad={setNuevoDestinoCiudad}
+          nuevoDestinoPais={nuevoDestinoPais} setNuevoDestinoPais={setNuevoDestinoPais}
+          guardandoDestino={guardandoDestino}
+          handleAgregarDestino={handleAgregarDestino}
+        />
 
         <hr style={{ margin: '1.5rem 0' }} />
 
-        <h2>Habitaciones y Pasajeros</h2>
-        <div>
-          <label>Cantidad de habitaciones</label><br />
-          <select value={cantidadHabitaciones} onChange={e => handleCantidadHabitaciones(Number(e.target.value))}>
-            <option value={1}>1</option>
-            <option value={2}>2</option>
-            <option value={3}>3</option>
-          </select>
-        </div>
-
-        <table style={{ marginTop: '1rem', borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', padding: '0.4rem' }}>Habitación</th>
-              <th style={{ textAlign: 'left', padding: '0.4rem' }}>Adultos</th>
-              {mostrarColumnaChd && <th style={{ textAlign: 'left', padding: '0.4rem' }}>Niños (2–11)</th>}
-              {mostrarColumnaInf && <th style={{ textAlign: 'left', padding: '0.4rem' }}>Infantes (0–1,99)</th>}
-              <th style={{ textAlign: 'left', padding: '0.4rem' }}>Composición</th>
-            </tr>
-          </thead>
-          <tbody>
-            {habitaciones.map((h, i) => (
-              <tr key={i}>
-                <td style={{ padding: '0.4rem' }}>Habitación {i + 1}</td>
-                <td style={{ padding: '0.4rem' }}>
-                  <input
-                    type="number" min="1" max="5" style={{ width: '60px' }}
-                    value={h.adl}
-                    onChange={e => actualizarHabitacion(i, 'adl', Number(e.target.value) || 1)}
-                  />
-                </td>
-                {mostrarColumnaChd && (
-                  <td style={{ padding: '0.4rem' }}>
-                    {h.chd > 0 ? (
-                      <>
-                        <input
-                          type="number" min="0" style={{ width: '60px' }}
-                          value={h.chd}
-                          onChange={e => actualizarHabitacion(i, 'chd', Number(e.target.value) || 0)}
-                        />
-                        {' '}
-                        <button type="button" onClick={() => actualizarHabitacion(i, 'chd', 0)} title="Quitar">✕</button>
-                      </>
-                    ) : (
-                      <button type="button" onClick={() => actualizarHabitacion(i, 'chd', 1)}>+ Niño</button>
-                    )}
-                  </td>
-                )}
-                {mostrarColumnaInf && (
-                  <td style={{ padding: '0.4rem' }}>
-                    {h.inf > 0 ? (
-                      <>
-                        <input
-                          type="number" min="0" style={{ width: '60px' }}
-                          value={h.inf}
-                          onChange={e => actualizarHabitacion(i, 'inf', Number(e.target.value) || 0)}
-                        />
-                        {' '}
-                        <button type="button" onClick={() => actualizarHabitacion(i, 'inf', 0)} title="Quitar">✕</button>
-                      </>
-                    ) : (
-                      <button type="button" onClick={() => actualizarHabitacion(i, 'inf', 1)}>+ Infante</button>
-                    )}
-                  </td>
-                )}
-                <td style={{ padding: '0.4rem', color: '#555' }}>{composicion(h.adl)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {!mostrarColumnaChd && (
-          <button type="button" style={{ marginTop: '0.5rem', marginRight: '0.5rem' }}
-            onClick={() => actualizarHabitacion(0, 'chd', 1)}>
-            + Agregar niños a alguna habitación
-          </button>
-        )}
-        {!mostrarColumnaInf && (
-          <button type="button" style={{ marginTop: '0.5rem' }}
-            onClick={() => actualizarHabitacion(0, 'inf', 1)}>
-            + Agregar infantes a alguna habitación
-          </button>
-        )}
+        <SeccionHabitaciones
+          cantidadHabitaciones={cantidadHabitaciones} handleCantidadHabitaciones={handleCantidadHabitaciones}
+          habitaciones={habitaciones} actualizarHabitacion={actualizarHabitacion}
+          mostrarColumnaChd={mostrarColumnaChd} mostrarColumnaInf={mostrarColumnaInf}
+        />
 
         <hr style={{ margin: '1.5rem 0' }} />
 
-        <h2>Costos Fijos del Viaje (netos, por pasajero)</h2>
-
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', padding: '0.4rem' }}></th>
-              <th style={{ textAlign: 'left', padding: '0.4rem' }}>Concepto</th>
-              <th style={{ textAlign: 'left', padding: '0.4rem' }}>ADL</th>
-              <th style={{ textAlign: 'left', padding: '0.4rem' }}>CHD</th>
-              <th style={{ textAlign: 'left', padding: '0.4rem' }}>INF</th>
-            </tr>
-          </thead>
-          <tbody>
-            <FilaCosto label="✈️ Boleto aéreo" item="boleto" costos={costosFijos} actualizar={actualizarCosto} />
-            <FilaCosto label="🚌 Traslados (A/P–HTL–A/P)" item="traslados" costos={costosFijos} actualizar={actualizarCosto} />
-            {tipoDestino === 'doble' && (
-              <FilaCosto label="🚌 Traslados (Interhoteles)" item="traslados_interhoteles" costos={costosFijos} actualizar={actualizarCosto} />
-            )}
-            <FilaCosto label="🛡️ Seguro médico y de viaje" item="seguro" costos={costosFijos} actualizar={actualizarCosto} />
-            <FilaCostoTour label="Tour 1" item="tour1" placeholder="Ej: Tour panorámico" costos={costosFijos} actualizar={actualizarCosto} />
-            <FilaCostoTour label="Tour 2" item="tour2" placeholder="Ej: Excursión especial" costos={costosFijos} actualizar={actualizarCosto} />
-          </tbody>
-        </table>
+        <SeccionCostosFijos
+          costosFijos={costosFijos} actualizarCosto={actualizarCosto} tipoDestino={tipoDestino}
+        />
 
         <hr style={{ margin: '1.5rem 0' }} />
 
