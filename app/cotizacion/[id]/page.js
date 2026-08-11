@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase'
 import { airlineName, cityName } from '../../lib/amadeus-parser'
+import { GenerarInfoIA } from '../../components/GenerarInfoIA'
 
 const LABELS_COSTOS = {
   boleto: '✈️ Boleto aéreo',
@@ -144,6 +145,25 @@ export default async function VerCotizacion({ params }) {
           ? <OpcionHotelDoble key={hIndex} hotel={hotel} hIndex={hIndex} habitaciones={habitaciones} />
           : <OpcionHotelUnico key={hIndex} hotel={hotel} hIndex={hIndex} habitaciones={habitaciones} />
       ))}
+
+      <hr style={{ margin: '1.5rem 0' }} />
+
+      <h2>Información adicional (IA)</h2>
+      <GenerarInfoIA
+        cotizacionId={cotizacion.id}
+        destinos={
+          cotizacion.tipo_destino === 'unico'
+            ? [{ ciudad: cotizacion.destino?.ciudad, pais: cotizacion.destino?.pais }]
+            : [
+                { ciudad: cotizacion.destino1?.ciudad, pais: cotizacion.destino1?.pais },
+                { ciudad: cotizacion.destino2?.ciudad, pais: cotizacion.destino2?.pais },
+              ]
+        }
+        fechaInicioViaje={cotizacion.fecha_inicio_viaje}
+        climaGuardado={cotizacion.clima_texto}
+        paseosGuardados={cotizacion.paseos}
+      />
+
     </main>
   )
 }

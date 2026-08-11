@@ -144,6 +144,17 @@ export default function NuevaCotizacion() {
     return total
   }
 
+  // ---- IA: resolver ciudad/país de los destinos seleccionados ----
+  function destinosParaIA() {
+    if (tipoDestino === 'unico') {
+      const d = destinos.find(x => x.id === destinoId)
+      return d ? [{ ciudad: d.ciudad, pais: d.pais }] : []
+    }
+    const d1 = destinos.find(x => x.id === destino1Id)
+    const d2 = destinos.find(x => x.id === destino2Id)
+    return [d1, d2].filter(Boolean).map(d => ({ ciudad: d.ciudad, pais: d.pais }))
+  }
+
   // ---- Hoteles: Destino Único ----
   function calcularNeto(habIndex, tipo, costoHotel, comision = 17) {
     const cantidadPax = habitaciones[habIndex]?.[tipo] || 0
@@ -364,6 +375,38 @@ export default function NuevaCotizacion() {
 
     const segmentosItinerario = parsearAmadeus(itinerarioTexto)
 
+    // ---- Generación automática de Clima + Paseos con IA ----
+    const MESES_IA = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    const destinosIA = destinosParaIA()
+    const mesIndex = fechaInicioViaje ? new Date(fechaInicioViaje + 'T00:00:00').getMonth() : null
+    const mes = mesIndex !== null ? MESES_IA[mesIndex] : ''
+
+    let climaTexto = null
+    let paseosGuardar = []
+
+    if (destinosIA.length > 0) {
+      try {
+        const [resClima, ...resPaseosArr] = await Promise.all([
+          fetch('/api/clima', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ destinos: destinosIA, mes }),
+          }).then(r => r.json()).catch(() => ({ texto: null })),
+          ...destinosIA.map(d =>
+            fetch('/api/paseos', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ciudad: d.ciudad, pais: d.pais }),
+            }).then(r => r.json()).catch(() => ({ paseos: [] }))
+          ),
+        ])
+        climaTexto = resClima?.texto || null
+        paseosGuardar = destinosIA.map((d, i) => ({ ciudad: d.ciudad, items: resPaseosArr[i]?.paseos || [] }))
+      } catch {
+        // Si falla, seguimos sin bloquear el guardado de la cotización
+      }
+    }
+
     const datosCotizacion = {
       cliente_id: cliente.id,
       cliente_nombre: `${nombre} ${apellido}`,
@@ -375,6 +418,8 @@ export default function NuevaCotizacion() {
       hoteles: hotelesOpciones,
       no_incluye: noIncluye,
       itinerario: segmentosItinerario.length > 0 ? segmentosItinerario : null,
+      clima_texto: climaTexto,
+      paseos: paseosGuardar,
     }
 
     if (tipoDestino === 'unico') {
@@ -487,7 +532,7 @@ export default function NuevaCotizacion() {
         <hr style={{ margin: '1.5rem 0' }} />
 
         <button type="submit" disabled={cargando}>
-          {cargando ? 'Guardando...' : 'Guardar cotización'}
+          {cargando ? 'Guardando y consultando IA...' : 'Guardar cotización'}
         </button>
         {error && <p style={{ color: 'red' }}>{error}</p>}
       </form>
