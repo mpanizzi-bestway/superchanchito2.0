@@ -14,9 +14,9 @@ export function resumenPax(pax) {
 export function crearHabitacionHotelVacia() {
   return {
     tipoHabitacion: '',
-    adl: { costo: '', venta: '', utilidad: '' },
-    chd: { costo: '', venta: '', utilidad: '' },
-    inf: { costo: '', venta: '', utilidad: '' },
+    adl: { costo: '', neto: '', venta: '', utilidad: '' },
+    chd: { costo: '', neto: '', venta: '', utilidad: '' },
+    inf: { costo: '', neto: '', venta: '', utilidad: '' },
   }
 }
 
@@ -41,9 +41,9 @@ export function crearHabitacionDobleVacia() {
   return {
     tipoHabitacion1: '',
     tipoHabitacion2: '',
-    adl: { costo1: '', costo2: '', venta: '', utilidad: '' },
-    chd: { costo1: '', costo2: '', venta: '', utilidad: '' },
-    inf: { costo1: '', costo2: '', venta: '', utilidad: '' },
+    adl: { costo1: '', costo2: '', neto: '', venta: '', utilidad: '' },
+    chd: { costo1: '', costo2: '', neto: '', venta: '', utilidad: '' },
+    inf: { costo1: '', costo2: '', neto: '', venta: '', utilidad: '' },
   }
 }
 

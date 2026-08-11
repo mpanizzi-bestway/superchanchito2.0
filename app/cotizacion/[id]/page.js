@@ -21,6 +21,7 @@ export default async function VerCotizacion({ params }) {
     .select(`
       *,
       cliente:cliente_id ( nombre, apellido, telefono, email, origen_consulta, seguimiento, fecha_seguimiento, estado_cliente ),
+      agente:agente_id ( nombre, apellido, cargo, whatsapp, email, interno ),
       destino:destino_id ( ciudad, pais ),
       destino1:destino1_id ( ciudad, pais ),
       destino2:destino2_id ( ciudad, pais )
@@ -40,6 +41,14 @@ export default async function VerCotizacion({ params }) {
   return (
     <main style={{ padding: '2rem', maxWidth: '700px' }}>
       <h1>Cotización</h1>
+
+      {cotizacion.agente && (
+        <p style={{ color: '#555', fontSize: '0.9rem' }}>
+          Cotización armada por: <strong>{cotizacion.agente.nombre} {cotizacion.agente.apellido}</strong>
+          {cotizacion.agente.cargo && ` — ${cotizacion.agente.cargo}`}
+          {cotizacion.agente.interno && ` · Int. ${cotizacion.agente.interno}`}
+        </p>
+      )}
 
       <h2>Cliente</h2>
       <p><strong>Nombre:</strong> {cliente?.nombre} {cliente?.apellido}</p>
@@ -225,6 +234,12 @@ function TablaResultadoHabitacion({ hab, pax }) {
         </tr>
       </thead>
       <tbody>
+        <tr>
+          <td style={{ padding: '0.3rem', color: '#555' }}>Neto</td>
+          <td style={{ padding: '0.3rem' }}>${formatoUsd(hab.adl.neto)}</td>
+          {pax?.chd > 0 && <td style={{ padding: '0.3rem' }}>${formatoUsd(hab.chd.neto)}</td>}
+          {pax?.inf > 0 && <td style={{ padding: '0.3rem' }}>${formatoUsd(hab.inf.neto)}</td>}
+        </tr>
         <tr>
           <td style={{ padding: '0.3rem' }}><strong>Precio de venta</strong></td>
           <td style={{ padding: '0.3rem' }}><strong>${hab.adl.venta || 0}</strong></td>
