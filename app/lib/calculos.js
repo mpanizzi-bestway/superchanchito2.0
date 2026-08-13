@@ -28,13 +28,14 @@ export function crearHotelVacio(cantidadHabitaciones, expandido = true) {
     noRefPrepago: false,
     operador: '',
     comision: 17,
+    comentario: '',
     expandido,
     habitaciones: Array.from({ length: cantidadHabitaciones }, crearHabitacionHotelVacia),
   }
 }
 
 export function crearHotelSimpleVacio() {
-  return { nombre: '', regimen: 'Solo Alojamiento', noRefPrepago: false, operador: '', comision: 17 }
+  return { nombre: '', regimen: 'Solo Alojamiento', noRefPrepago: false, operador: '', comision: 17, comentario: '' }
 }
 
 export function crearHabitacionDobleVacia() {

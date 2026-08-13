@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import { SeccionInfoIA } from '../components/SeccionInfoIA'
 
 import {
   composicion, resumenPax,
@@ -56,6 +57,13 @@ export default function NuevaCotizacion() {
   // ----- Sección 4: Itinerario Aéreo -----
   const [itinerarioTexto, setItinerarioTexto] = useState('')
 
+  // ----- Información IA (Módulo 9) -----
+  const [climaTexto, setClimaTexto] = useState(null)
+  const [paseosIA, setPaseosIA] = useState([])
+  const [generandoIA, setGenerandoIA] = useState(false)
+  const [generandoComentario, setGenerandoComentario] = useState({})
+  const debounceIA = useRef(null)
+
   // ----- Sección 5: Costos Fijos -----
   const [costosFijos, setCostosFijos] = useState({
     boleto: { checked: true, adl: '', chd: '', inf: '' },
@@ -83,6 +91,20 @@ export default function NuevaCotizacion() {
       return { ...hotel, habitaciones: habs }
     }))
   }, [cantidadHabitaciones])
+
+  useEffect(() => {
+    if (debounceIA.current) clearTimeout(debounceIA.current)
+    const destinosIA = destinosParaIA()
+    if (destinosIA.length === 0 || !fechaInicioViaje) return
+    if (tipoDestino === 'doble' && destinosIA.length < 2) return
+
+    debounceIA.current = setTimeout(() => {
+      generarInfoIA()
+    }, 5000)
+
+    return () => clearTimeout(debounceIA.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destinoId, destino1Id, destino2Id, fechaInicioViaje, tipoDestino])
 
   useEffect(() => {
     setHotelesOpciones([
@@ -153,6 +175,86 @@ export default function NuevaCotizacion() {
     const d1 = destinos.find(x => x.id === destino1Id)
     const d2 = destinos.find(x => x.id === destino2Id)
     return [d1, d2].filter(Boolean).map(d => ({ ciudad: d.ciudad, pais: d.pais }))
+  }
+
+  async function generarInfoIA() {
+    const destinosIA = destinosParaIA()
+    if (destinosIA.length === 0 || !fechaInicioViaje) return
+    if (tipoDestino === 'doble' && destinosIA.length < 2) return
+
+    setGenerandoIA(true)
+
+    const MESES_IA = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+    const mesIndex = new Date(fechaInicioViaje + 'T00:00:00').getMonth()
+    const mes = MESES_IA[mesIndex]
+
+    try {
+      const [resClima, ...resPaseosArr] = await Promise.all([
+        fetch('/api/clima', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ destinos: destinosIA, mes }),
+        }).then(r => r.json()).catch(() => ({ texto: null })),
+        ...destinosIA.map(d =>
+          fetch('/api/paseos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ciudad: d.ciudad, pais: d.pais, cantidad: destinosIA.length > 1 ? 2 : 4 }),
+          }).then(r => r.json()).catch(() => ({ paseos: [] }))
+        ),
+      ])
+      setClimaTexto(resClima?.texto || null)
+      setPaseosIA(destinosIA.map((d, i) => ({ ciudad: d.ciudad, items: resPaseosArr[i]?.paseos || [] })))
+    } catch {
+      // se ignora: no bloqueamos el formulario por un fallo de IA
+    }
+
+    setGenerandoIA(false)
+  }
+
+  // ---- IA: comentario de hotel ----
+  async function generarComentarioHotel(hotelIndex) {
+    const hotel = hotelesOpciones[hotelIndex]
+    if (!hotel.nombre) return
+    const d = destinosParaIA()[0]
+    if (!d) return
+
+    const key = `${hotelIndex}-unico`
+    setGenerandoComentario(prev => ({ ...prev, [key]: true }))
+    try {
+      const res = await fetch('/api/hotel-comentario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: hotel.nombre, ciudad: d.ciudad, pais: d.pais }),
+      }).then(r => r.json()).catch(() => ({ comentario: null }))
+      actualizarHotelCampo(hotelIndex, 'comentario', res.comentario || '')
+    } catch {
+      // se ignora, no bloquea
+    }
+    setGenerandoComentario(prev => ({ ...prev, [key]: false }))
+  }
+
+  async function generarComentarioHotelDoble(hotelIndex, cual) {
+    const hotel = hotelesOpciones[hotelIndex]
+    const datosHotel = hotel[cual]
+    if (!datosHotel.nombre) return
+    const destinosIA = destinosParaIA()
+    const d = cual === 'hotel1' ? destinosIA[0] : destinosIA[1]
+    if (!d) return
+
+    const key = `${hotelIndex}-${cual}`
+    setGenerandoComentario(prev => ({ ...prev, [key]: true }))
+    try {
+      const res = await fetch('/api/hotel-comentario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: datosHotel.nombre, ciudad: d.ciudad, pais: d.pais }),
+      }).then(r => r.json()).catch(() => ({ comentario: null }))
+      actualizarHotelSimpleCampo(hotelIndex, cual, 'comentario', res.comentario || '')
+    } catch {
+      // se ignora, no bloquea
+    }
+    setGenerandoComentario(prev => ({ ...prev, [key]: false }))
   }
 
   // ---- Hoteles: Destino Único ----
@@ -375,38 +477,6 @@ export default function NuevaCotizacion() {
 
     const segmentosItinerario = parsearAmadeus(itinerarioTexto)
 
-    // ---- Generación automática de Clima + Paseos con IA ----
-    const MESES_IA = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    const destinosIA = destinosParaIA()
-    const mesIndex = fechaInicioViaje ? new Date(fechaInicioViaje + 'T00:00:00').getMonth() : null
-    const mes = mesIndex !== null ? MESES_IA[mesIndex] : ''
-
-    let climaTexto = null
-    let paseosGuardar = []
-
-    if (destinosIA.length > 0) {
-      try {
-        const [resClima, ...resPaseosArr] = await Promise.all([
-          fetch('/api/clima', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ destinos: destinosIA, mes }),
-          }).then(r => r.json()).catch(() => ({ texto: null })),
-          ...destinosIA.map(d =>
-            fetch('/api/paseos', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ciudad: d.ciudad, pais: d.pais }),
-            }).then(r => r.json()).catch(() => ({ paseos: [] }))
-          ),
-        ])
-        climaTexto = resClima?.texto || null
-        paseosGuardar = destinosIA.map((d, i) => ({ ciudad: d.ciudad, items: resPaseosArr[i]?.paseos || [] }))
-      } catch {
-        // Si falla, seguimos sin bloquear el guardado de la cotización
-      }
-    }
-
     const datosCotizacion = {
       cliente_id: cliente.id,
       cliente_nombre: `${nombre} ${apellido}`,
@@ -419,7 +489,7 @@ export default function NuevaCotizacion() {
       no_incluye: noIncluye,
       itinerario: segmentosItinerario.length > 0 ? segmentosItinerario : null,
       clima_texto: climaTexto,
-      paseos: paseosGuardar,
+      paseos: paseosIA,
     }
 
     if (tipoDestino === 'unico') {
@@ -475,6 +545,7 @@ export default function NuevaCotizacion() {
           nuevoDestinoPais={nuevoDestinoPais} setNuevoDestinoPais={setNuevoDestinoPais}
           guardandoDestino={guardandoDestino}
           handleAgregarDestino={handleAgregarDestino}
+          onActualizarIA={generarInfoIA} generandoIA={generandoIA}
         />
 
         <hr style={{ margin: '1.5rem 0' }} />
@@ -512,6 +583,17 @@ export default function NuevaCotizacion() {
           actualizarHabitacionDobleCampo={actualizarHabitacionDobleCampo}
           actualizarCostoPasajeroDoble={actualizarCostoPasajeroDoble} calcularNetoDoble={calcularNetoDoble}
           actualizarVentaManualDoble={actualizarVentaManualDoble} actualizarUtilidadManualDoble={actualizarUtilidadManualDoble}
+          generarComentarioHotel={generarComentarioHotel}
+          generarComentarioHotelDoble={generarComentarioHotelDoble}
+          generandoComentario={generandoComentario}
+        />
+
+        <hr style={{ margin: '1.5rem 0' }} />
+
+        <SeccionInfoIA
+          climaTexto={climaTexto} setClimaTexto={setClimaTexto}
+          paseosIA={paseosIA} setPaseosIA={setPaseosIA}
+          generandoIA={generandoIA}
         />
 
         <hr style={{ margin: '1.5rem 0' }} />

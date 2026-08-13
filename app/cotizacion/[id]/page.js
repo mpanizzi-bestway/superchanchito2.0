@@ -174,6 +174,7 @@ function OpcionHotelUnico({ hotel, hIndex, habitaciones }) {
       <h3>Opción {hIndex + 1}: {hotel.nombre || '(sin nombre)'}</h3>
       <p><strong>Régimen:</strong> {hotel.regimen} · <strong>Comisión:</strong> {hotel.comision}%</p>
       {hotel.operador && <p><strong>Operador:</strong> {hotel.operador}</p>}
+      {hotel.comentario && <p style={{ fontStyle: 'italic', color: '#555' }}>{hotel.comentario}</p>}
       {hotel.noRefPrepago && (
         <p style={{ color: '#a00' }}>Promoción 100% pre paga y en gastos totales (sin devolución)</p>
       )}
@@ -235,6 +236,7 @@ function BloqueHotelResultado({ titulo, datos }) {
       <p>{datos.nombre || '(sin nombre)'}</p>
       <p style={{ fontSize: '0.85rem', color: '#555' }}>{datos.regimen} · Comisión {datos.comision}%</p>
       {datos.operador && <p style={{ fontSize: '0.85rem' }}>Operador: {datos.operador}</p>}
+      {datos.comentario && <p style={{ fontSize: '0.85rem', fontStyle: 'italic', color: '#555' }}>{datos.comentario}</p>}
       {datos.noRefPrepago && (
         <p style={{ fontSize: '0.8rem', color: '#a00' }}>Promoción 100% pre paga (sin devolución)</p>
       )}

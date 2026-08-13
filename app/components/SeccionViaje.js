@@ -13,6 +13,7 @@ export function SeccionViaje({
   nuevoDestinoPais, setNuevoDestinoPais,
   guardandoDestino,
   handleAgregarDestino,
+  onActualizarIA, generandoIA,
 }) {
   return (
     <>
@@ -28,63 +29,64 @@ export function SeccionViaje({
         </label>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-        {tipoDestino === 'unico' ? (
-          <>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label>Destino</label><br />
-              <select style={{ width: '100%' }} value={destinoId} onChange={e => setDestinoId(e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label>Fecha de inicio del viaje</label><br />
-              <input style={{ width: '100%' }} type="date" value={fechaInicioViaje} onChange={e => setFechaInicioViaje(e.target.value)} required />
-            </div>
-            <div>
-              <label>Días en destino</label><br />
-              <input style={{ width: '100%' }} type="number" min="1" value={diasDestino} onChange={e => setDiasDestino(e.target.value)} required />
-            </div>
-          </>
-        ) : (
-          <>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label>Fecha de inicio del viaje</label><br />
-              <input style={{ width: '100%' }} type="date" value={fechaInicioViaje} onChange={e => setFechaInicioViaje(e.target.value)} required />
-            </div>
-
-            <div>
-              <label>1er Destino</label><br />
-              <select style={{ width: '100%' }} value={destino1Id} onChange={e => setDestino1Id(e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Días en 1er Destino</label><br />
-              <input style={{ width: '100%' }} type="number" min="1" value={diasDestino1} onChange={e => setDiasDestino1(e.target.value)} required />
-            </div>
-
-            <div>
-              <label>2do Destino</label><br />
-              <select style={{ width: '100%' }} value={destino2Id} onChange={e => setDestino2Id(e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Días en 2do Destino</label><br />
-              <input style={{ width: '100%' }} type="number" min="1" value={diasDestino2} onChange={e => setDiasDestino2(e.target.value)} required />
-            </div>
-          </>
-        )}
+      <div>
+        <label>Fecha de inicio del viaje</label><br />
+        <input type="date" value={fechaInicioViaje} onChange={e => setFechaInicioViaje(e.target.value)} required />
       </div>
+
+      {tipoDestino === 'unico' ? (
+        <>
+          <div>
+            <label>Destino</label><br />
+            <select value={destinoId} onChange={e => setDestinoId(e.target.value)} required>
+              <option value="">Seleccionar...</option>
+              {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Días en destino</label><br />
+            <input type="number" min="1" value={diasDestino} onChange={e => setDiasDestino(e.target.value)} required />
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <label>1er Destino</label><br />
+            <select value={destino1Id} onChange={e => setDestino1Id(e.target.value)} required>
+              <option value="">Seleccionar...</option>
+              {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Días en 1er Destino</label><br />
+            <input type="number" min="1" value={diasDestino1} onChange={e => setDiasDestino1(e.target.value)} required />
+          </div>
+          <div>
+            <label>2do Destino</label><br />
+            <select value={destino2Id} onChange={e => setDestino2Id(e.target.value)} required>
+              <option value="">Seleccionar...</option>
+              {destinos.map(d => <option key={d.id} value={d.id}>{d.ciudad}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Días en 2do Destino</label><br />
+            <input type="number" min="1" value={diasDestino2} onChange={e => setDiasDestino2(e.target.value)} required />
+          </div>
+        </>
+      )}
+
+      <button
+        type="button"
+        onClick={onActualizarIA}
+        disabled={generandoIA}
+        style={{ fontSize: '0.75rem', color: '#555', background: 'none', border: '1px solid #ccc', padding: '0.2rem 0.6rem', marginTop: '0.5rem' }}
+      >
+        {generandoIA ? 'Actualizando IA...' : '↻ Actualizar datos IA'}
+      </button>
 
       <div style={{ marginTop: '1rem' }}>
         <button type="button" onClick={() => setMostrarNuevoDestino(!mostrarNuevoDestino)}>
-          {mostrarNuevoDestino ? '▲ Agregar destino al listado' : '▼ Agregar destino al listado'}
+          {mostrarNuevoDestino ? '▲ Agregar destino' : '▼ Agregar destino'}
         </button>
         {mostrarNuevoDestino && (
           <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '0.5rem' }}>

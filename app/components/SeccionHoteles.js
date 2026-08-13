@@ -8,13 +8,13 @@ export function SeccionHoteles({
   habitaciones,
   mostrarColumnaChd, mostrarColumnaInf,
   toggleExpandido, quitarOpcionHotel, agregarOpcionHotel,
-  // Destino Único
   actualizarHotelCampo, actualizarComision, actualizarHabitacionHotel,
   actualizarCostoPasajero, calcularNeto, actualizarVentaManual, actualizarUtilidadManual,
-  // Doble Destino
   actualizarHotelSimpleCampo, actualizarComisionDoble, actualizarHabitacionDobleCampo,
   actualizarCostoPasajeroDoble, calcularNetoDoble, actualizarVentaManualDoble, actualizarUtilidadManualDoble,
+  generarComentarioHotel, generarComentarioHotelDoble, generandoComentario,
 }) {
+
   return (
     <>
       <h2>Opciones de Hoteles</h2>
@@ -43,12 +43,16 @@ export function SeccionHoteles({
                       datos={hotel.hotel1}
                       onCampo={(campo, valor) => actualizarHotelSimpleCampo(hIndex, 'hotel1', campo, valor)}
                       onComision={valor => actualizarComisionDoble(hIndex, 'hotel1', valor)}
+                      onGenerarComentario={() => generarComentarioHotelDoble(hIndex, 'hotel1')}
+                      generandoComentario={generandoComentario[`${hIndex}-hotel1`]}
                     />
                     <BloqueHotelSimple
                       titulo="Hotel — 2do destino"
                       datos={hotel.hotel2}
                       onCampo={(campo, valor) => actualizarHotelSimpleCampo(hIndex, 'hotel2', campo, valor)}
                       onComision={valor => actualizarComisionDoble(hIndex, 'hotel2', valor)}
+                      onGenerarComentario={() => generarComentarioHotelDoble(hIndex, 'hotel2')}
+                      generandoComentario={generandoComentario[`${hIndex}-hotel2`]}
                     />
                   </div>
 
@@ -164,7 +168,7 @@ export function SeccionHoteles({
                       <input
                         value={hotel.nombre}
                         onChange={e => actualizarHotelCampo(hIndex, 'nombre', e.target.value)}
-                        placeholder="Ej: Hotel Fasano"
+                        placeholder="Ej: Hotel Palladium Imbassai"
                       />
                     </div>
                     <div>
@@ -180,7 +184,22 @@ export function SeccionHoteles({
                         <option>Todo Incluido</option>
                       </select>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => generarComentarioHotel(hIndex)}
+                      disabled={!hotel.nombre || generandoComentario[`${hIndex}-unico`]}
+                      style={{ fontSize: '0.75rem', color: '#555', background: 'none', border: '1px solid #ccc', padding: '0.3rem 0.6rem' }}
+                    >
+                      {generandoComentario[`${hIndex}-unico`] ? 'Generando...' : '✨ Comentario IA'}
+                    </button>
                   </div>
+                  <textarea
+                    value={hotel.comentario}
+                    onChange={e => actualizarHotelCampo(hIndex, 'comentario', e.target.value)}
+                    placeholder="Comentario sobre el hotel (se puede generar con IA o escribir a mano)"
+                    rows={2}
+                    style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.9rem' }}
+                  />
 
                   <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
                     <label>
@@ -288,4 +307,4 @@ export function SeccionHoteles({
       )}
     </>
   )
-}
+}   

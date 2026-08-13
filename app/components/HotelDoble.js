@@ -1,4 +1,4 @@
-export function BloqueHotelSimple({ titulo, datos, onCampo, onComision }) {
+export function BloqueHotelSimple({ titulo, datos, onCampo, onComision, onGenerarComentario, generandoComentario }) {
   return (
     <div style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
       <p style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>{titulo}</p>
@@ -35,6 +35,21 @@ export function BloqueHotelSimple({ titulo, datos, onCampo, onComision }) {
           Promoción 100% pre paga y en gastos totales (sin devolución)
         </p>
       )}
+      <button
+        type="button"
+        onClick={onGenerarComentario}
+        disabled={!datos.nombre || generandoComentario}
+        style={{ fontSize: '0.75rem', color: '#555', background: 'none', border: '1px solid #ccc', padding: '0.3rem 0.6rem', marginTop: '0.5rem' }}
+      >
+        {generandoComentario ? 'Generando...' : '✨ Comentario IA'}
+      </button>
+      <textarea
+        value={datos.comentario}
+        onChange={e => onCampo('comentario', e.target.value)}
+        placeholder="Comentario sobre el hotel"
+        rows={2}
+        style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.9rem' }}
+      />
     </div>
   )
 }
