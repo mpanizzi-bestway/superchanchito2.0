@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { SeccionInfoIA } from '../components/SeccionInfoIA'
+import { PanelHistorialHoteles } from '../components/PanelHistorialHoteles'
 
 import {
   composicion, resumenPax,
@@ -164,6 +165,12 @@ export default function NuevaCotizacion() {
       if (item.checked) total += Number(item[tipo]) || 0
     })
     return total
+  }
+
+  function promedioCostosAdl(habitacionesHotel, campo) {
+    const valores = habitacionesHotel.map(h => Number(h.adl[campo])).filter(n => n > 0)
+    if (valores.length === 0) return null
+    return valores.reduce((a, b) => a + b, 0) / valores.length
   }
 
   // ---- IA: resolver ciudad/país de los destinos seleccionados ----
@@ -508,9 +515,39 @@ export default function NuevaCotizacion() {
       .select()
       .single()
 
-    setCargando(false)
-    if (errorCotizacion) { setError(errorCotizacion.message); return }
+    if (errorCotizacion) { setCargando(false); setError(errorCotizacion.message); return }
 
+    // ---- Guardar historial de hoteles para futuras referencias ----
+    try {
+      const registros = []
+      hotelesOpciones.forEach(hotel => {
+        if (hotel.modo === 'doble') {
+          const dias1 = Number(diasDestino1)
+          const dias2 = Number(diasDestino2)
+          const costoTotal1 = promedioCostosAdl(hotel.habitaciones, 'costo1')
+          const costoTotal2 = promedioCostosAdl(hotel.habitaciones, 'costo2')
+          if (hotel.hotel1.nombre?.trim() && costoTotal1 && dias1 > 0) {
+            registros.push({ destino_id: destino1Id, nombre_hotel: hotel.hotel1.nombre.trim(), costo_por_noche: costoTotal1 / dias1, dias: dias1 })
+          }
+          if (hotel.hotel2.nombre?.trim() && costoTotal2 && dias2 > 0) {
+            registros.push({ destino_id: destino2Id, nombre_hotel: hotel.hotel2.nombre.trim(), costo_por_noche: costoTotal2 / dias2, dias: dias2 })
+          }
+        } else {
+          const dias = Number(diasDestino)
+          const costoTotal = promedioCostosAdl(hotel.habitaciones, 'costo')
+          if (hotel.nombre?.trim() && costoTotal && dias > 0) {
+            registros.push({ destino_id: destinoId, nombre_hotel: hotel.nombre.trim(), costo_por_noche: costoTotal / dias, dias })
+          }
+        }
+      })
+      if (registros.length > 0) {
+        await supabase.from('hoteles_historial').insert(registros)
+      }
+    } catch {
+      // no bloquea el guardado de la cotización si esto falla
+    }
+
+    setCargando(false)
     router.push(`/cotizacion/${cotizacion.id}`)
   }
 
@@ -570,23 +607,34 @@ export default function NuevaCotizacion() {
 
         <hr style={{ margin: '1.5rem 0' }} />
 
-        <SeccionHoteles
-          hotelesOpciones={hotelesOpciones}
-          habitaciones={habitaciones}
-          mostrarColumnaChd={mostrarColumnaChd} mostrarColumnaInf={mostrarColumnaInf}
-          toggleExpandido={toggleExpandido} quitarOpcionHotel={quitarOpcionHotel} agregarOpcionHotel={agregarOpcionHotel}
-          actualizarHotelCampo={actualizarHotelCampo} actualizarComision={actualizarComision}
-          actualizarHabitacionHotel={actualizarHabitacionHotel}
-          actualizarCostoPasajero={actualizarCostoPasajero} calcularNeto={calcularNeto}
-          actualizarVentaManual={actualizarVentaManual} actualizarUtilidadManual={actualizarUtilidadManual}
-          actualizarHotelSimpleCampo={actualizarHotelSimpleCampo} actualizarComisionDoble={actualizarComisionDoble}
-          actualizarHabitacionDobleCampo={actualizarHabitacionDobleCampo}
-          actualizarCostoPasajeroDoble={actualizarCostoPasajeroDoble} calcularNetoDoble={calcularNetoDoble}
-          actualizarVentaManualDoble={actualizarVentaManualDoble} actualizarUtilidadManualDoble={actualizarUtilidadManualDoble}
-          generarComentarioHotel={generarComentarioHotel}
-          generarComentarioHotelDoble={generarComentarioHotelDoble}
-          generandoComentario={generandoComentario}
-        />
+        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div style={{ flex: '1 1 400px', minWidth: 0 }}>
+            <SeccionHoteles
+              hotelesOpciones={hotelesOpciones}
+              habitaciones={habitaciones}
+              mostrarColumnaChd={mostrarColumnaChd} mostrarColumnaInf={mostrarColumnaInf}
+              toggleExpandido={toggleExpandido} quitarOpcionHotel={quitarOpcionHotel} agregarOpcionHotel={agregarOpcionHotel}
+              actualizarHotelCampo={actualizarHotelCampo} actualizarComision={actualizarComision}
+              actualizarHabitacionHotel={actualizarHabitacionHotel}
+              actualizarCostoPasajero={actualizarCostoPasajero} calcularNeto={calcularNeto}
+              actualizarVentaManual={actualizarVentaManual} actualizarUtilidadManual={actualizarUtilidadManual}
+              actualizarHotelSimpleCampo={actualizarHotelSimpleCampo} actualizarComisionDoble={actualizarComisionDoble}
+              actualizarHabitacionDobleCampo={actualizarHabitacionDobleCampo}
+              actualizarCostoPasajeroDoble={actualizarCostoPasajeroDoble} calcularNetoDoble={calcularNetoDoble}
+              actualizarVentaManualDoble={actualizarVentaManualDoble} actualizarUtilidadManualDoble={actualizarUtilidadManualDoble}
+              generarComentarioHotel={generarComentarioHotel}
+              generarComentarioHotelDoble={generarComentarioHotelDoble}
+              generandoComentario={generandoComentario}
+            />
+          </div>
+          <div style={{ flex: '0 1 260px', minWidth: '220px' }}>
+            <PanelHistorialHoteles
+              tipoDestino={tipoDestino}
+              destinoId={destinoId} destino1Id={destino1Id} destino2Id={destino2Id}
+              destinos={destinos}
+            />
+          </div>
+        </div>
 
         <hr style={{ margin: '1.5rem 0' }} />
 
