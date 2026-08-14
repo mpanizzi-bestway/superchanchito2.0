@@ -11,6 +11,14 @@ export function resumenPax(pax) {
   return partes.join(' + ')
 }
 
+export function normalizarNombre(nombre) {
+  return nombre
+    .trim()
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+}
+
 export function crearHabitacionHotelVacia() {
   return {
     tipoHabitacion: '',
@@ -29,13 +37,18 @@ export function crearHotelVacio(cantidadHabitaciones, expandido = true) {
     operador: '',
     comision: 17,
     comentario: '',
+    lat: null,
+    lng: null,
+    fotoUrl: null,
+    fotoConsultada: false,
+    direccion: null,
     expandido,
     habitaciones: Array.from({ length: cantidadHabitaciones }, crearHabitacionHotelVacia),
   }
 }
 
 export function crearHotelSimpleVacio() {
-  return { nombre: '', regimen: 'Solo Alojamiento', noRefPrepago: false, operador: '', comision: 17, comentario: '' }
+  return { nombre: '', regimen: 'Solo Alojamiento', noRefPrepago: false, operador: '', comision: 17, comentario: '', lat: null, lng: null, fotoUrl: null, fotoConsultada: false, direccion: null }
 }
 
 export function crearHabitacionDobleVacia() {

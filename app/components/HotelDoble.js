@@ -1,10 +1,26 @@
-export function BloqueHotelSimple({ titulo, datos, onCampo, onComision, onGenerarComentario, generandoComentario }) {
+import { FotoYMapaHotel } from './FotoYMapaHotel'
+import { FotoHotelManual } from './FotoHotelManual'
+
+export function BloqueHotelSimple({
+  titulo, datos, onCampo, onComision,
+  onGenerarComentario, generandoComentario,
+  onNombreChange,
+  onGuardarUrl,
+}) {
   return (
     <div style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
       <p style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>{titulo}</p>
       <div>
         <label>Nombre del hotel</label><br />
-        <input value={datos.nombre} onChange={e => onCampo('nombre', e.target.value)} placeholder="Ej: Hotel Fasano" />
+        <input
+          value={datos.nombre}
+          onChange={e => {
+            const valor = e.target.value
+            onCampo('nombre', valor)
+            onNombreChange(valor)
+          }}
+          placeholder="Ej: Hotel Fasano"
+        />
       </div>
       <div style={{ marginTop: '0.5rem' }}>
         <label>Régimen</label><br />
@@ -47,8 +63,14 @@ export function BloqueHotelSimple({ titulo, datos, onCampo, onComision, onGenera
         value={datos.comentario}
         onChange={e => onCampo('comentario', e.target.value)}
         placeholder="Comentario sobre el hotel"
-        rows={2}
+        rows={4}
         style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.9rem' }}
+      />
+      <FotoYMapaHotel lat={datos.lat} lng={datos.lng} fotoUrl={datos.fotoUrl} direccion={datos.direccion} fotoConsultada={datos.fotoConsultada} />
+      <FotoHotelManual
+        fotoConsultada={datos.fotoConsultada}
+        hayNombre={!!datos.nombre?.trim()}
+        onGuardarUrl={onGuardarUrl}
       />
     </div>
   )

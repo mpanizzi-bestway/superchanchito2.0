@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { SeccionInfoIA } from '../components/SeccionInfoIA'
 import { PanelHistorialHoteles } from '../components/PanelHistorialHoteles'
+import { FotoYMapaHotel } from '../components/FotoYMapaHotel'
+import { FotoHotelManual } from '../components/FotoHotelManual'
 
 import {
   composicion, resumenPax,
   crearHabitacionHotelVacia, crearHotelVacio,
   crearHotelSimpleVacio, crearHabitacionDobleVacia, crearOpcionHotelDoble,
-  redondearVentaSugerida,
+  redondearVentaSugerida, normalizarNombre,
 } from '../lib/calculos'
 
 import { SeccionCliente } from '../components/SeccionCliente'
@@ -63,7 +65,9 @@ export default function NuevaCotizacion() {
   const [paseosIA, setPaseosIA] = useState([])
   const [generandoIA, setGenerandoIA] = useState(false)
   const [generandoComentario, setGenerandoComentario] = useState({})
+  const [generandoLugar, setGenerandoLugar] = useState({})
   const debounceIA = useRef(null)
+  const debounceHotel = useRef({})
 
   // ----- Sección 5: Costos Fijos -----
   const [costosFijos, setCostosFijos] = useState({
@@ -262,6 +266,152 @@ export default function NuevaCotizacion() {
       // se ignora, no bloquea
     }
     setGenerandoComentario(prev => ({ ...prev, [key]: false }))
+  }
+
+  async function generarLugarHotel(hotelIndex, nombreHotel) {
+    if (!nombreHotel?.trim()) return
+    const d = destinosParaIA()[0]
+    if (!d) return
+    const key = `${hotelIndex}-unico-lugar`
+    setGenerandoLugar(prev => ({ ...prev, [key]: true }))
+    try {
+      const res = await fetch('/api/hotel-lugar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombreHotel, ciudad: d.ciudad, pais: d.pais }),
+      }).then(r => r.json()).catch(() => ({ encontrado: false }))
+      if (res.encontrado) {
+        setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : {
+          ...h, lat: res.lat, lng: res.lng, direccion: res.direccion,
+        }))
+      }
+    } catch {
+      // no bloquea
+    }
+    setGenerandoLugar(prev => ({ ...prev, [key]: false }))
+  }
+
+  async function generarLugarHotelDoble(hotelIndex, cual, nombreHotel) {
+    if (!nombreHotel?.trim()) return
+    const destinosIA = destinosParaIA()
+    const d = cual === 'hotel1' ? destinosIA[0] : destinosIA[1]
+    if (!d) return
+    const key = `${hotelIndex}-${cual}-lugar`
+    setGenerandoLugar(prev => ({ ...prev, [key]: true }))
+    try {
+      const res = await fetch('/api/hotel-lugar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombreHotel, ciudad: d.ciudad, pais: d.pais }),
+      }).then(r => r.json()).catch(() => ({ encontrado: false }))
+      if (res.encontrado) {
+        setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : {
+          ...h, [cual]: { ...h[cual], lat: res.lat, lng: res.lng, direccion: res.direccion },
+        }))
+      }
+    } catch {
+      // no bloquea
+    }
+    setGenerandoLugar(prev => ({ ...prev, [key]: false }))
+  }
+
+  async function buscarFotoHotel(hotelIndex, nombreHotel) {
+    if (!nombreHotel?.trim()) return
+    const d = destinosParaIA()[0]
+    if (!d) return
+    let urlEncontrada = null
+    try {
+      const { data, error } = await supabase.rpc('buscar_hotel_foto', {
+        p_nombre: normalizarNombre(nombreHotel),
+        p_ciudad: d.ciudad,
+      })
+      if (error) console.error('Error buscando foto:', error)
+      urlEncontrada = data || null
+    } catch (e) {
+      console.error('Excepción buscando foto:', e)
+    }
+    setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : { ...h, fotoUrl: urlEncontrada, fotoConsultada: true }))
+  }
+
+  async function buscarFotoHotelDoble(hotelIndex, cual, nombreHotel) {
+    if (!nombreHotel?.trim()) return
+    const destinosIA = destinosParaIA()
+    const d = cual === 'hotel1' ? destinosIA[0] : destinosIA[1]
+    if (!d) return
+    let urlEncontrada = null
+    try {
+      const { data, error } = await supabase.rpc('buscar_hotel_foto', {
+        p_nombre: normalizarNombre(nombreHotel),
+        p_ciudad: d.ciudad,
+      })
+      if (error) console.error('Error buscando foto:', error)
+      urlEncontrada = data || null
+    } catch (e) {
+      console.error('Excepción buscando foto:', e)
+    }
+    setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : {
+      ...h, [cual]: { ...h[cual], fotoUrl: urlEncontrada, fotoConsultada: true },
+    }))
+  }
+
+  async function guardarFotoHotelManual(hotelIndex, url) {
+    const hotel = hotelesOpciones[hotelIndex]
+    const d = destinosParaIA()[0]
+    if (!hotel.nombre?.trim() || !d) return
+    try {
+      await supabase.from('hoteles_fotos').upsert({
+        nombre_hotel: hotel.nombre.trim(),
+        nombre_normalizado: normalizarNombre(hotel.nombre),
+        ciudad: d.ciudad,
+        pais: d.pais,
+        url_foto: url,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'nombre_normalizado,ciudad' })
+      setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : { ...h, fotoUrl: url, fotoConsultada: true }))
+    } catch {
+      // no bloquea
+    }
+  }
+
+  async function guardarFotoHotelManualDoble(hotelIndex, cual, url) {
+    const hotel = hotelesOpciones[hotelIndex]
+    const datosHotel = hotel[cual]
+    const destinosIA = destinosParaIA()
+    const d = cual === 'hotel1' ? destinosIA[0] : destinosIA[1]
+    if (!datosHotel.nombre?.trim() || !d) return
+    try {
+      await supabase.from('hoteles_fotos').upsert({
+        nombre_hotel: datosHotel.nombre.trim(),
+        nombre_normalizado: normalizarNombre(datosHotel.nombre),
+        ciudad: d.ciudad,
+        pais: d.pais,
+        url_foto: url,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'nombre_normalizado,ciudad' })
+      setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : {
+        ...h, [cual]: { ...h[cual], fotoUrl: url, fotoConsultada: true },
+      }))
+    } catch {
+      // no bloquea
+    }
+  }
+
+  function programarBusquedaHotel(hotelIndex, nombreHotel) {
+    const key = `${hotelIndex}-unico`
+    if (debounceHotel.current[key]) clearTimeout(debounceHotel.current[key])
+    debounceHotel.current[key] = setTimeout(() => {
+      generarLugarHotel(hotelIndex, nombreHotel)
+      buscarFotoHotel(hotelIndex, nombreHotel)
+    }, 3000)
+  }
+
+  function programarBusquedaHotelDoble(hotelIndex, cual, nombreHotel) {
+    const key = `${hotelIndex}-${cual}`
+    if (debounceHotel.current[key]) clearTimeout(debounceHotel.current[key])
+    debounceHotel.current[key] = setTimeout(() => {
+      generarLugarHotelDoble(hotelIndex, cual, nombreHotel)
+      buscarFotoHotelDoble(hotelIndex, cual, nombreHotel)
+    }, 3000)
   }
 
   // ---- Hoteles: Destino Único ----
@@ -625,6 +775,13 @@ export default function NuevaCotizacion() {
               generarComentarioHotel={generarComentarioHotel}
               generarComentarioHotelDoble={generarComentarioHotelDoble}
               generandoComentario={generandoComentario}
+              generarLugarHotel={generarLugarHotel}
+              generarLugarHotelDoble={generarLugarHotelDoble}
+              generandoLugar={generandoLugar}
+              programarBusquedaHotel={programarBusquedaHotel}
+              programarBusquedaHotelDoble={programarBusquedaHotelDoble}
+              guardarFotoHotelManual={guardarFotoHotelManual}
+              guardarFotoHotelManualDoble={guardarFotoHotelManualDoble}
             />
           </div>
           <div style={{ flex: '0 1 260px', minWidth: '220px' }}>

@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase'
 import { airlineName, cityName } from '../../lib/amadeus-parser'
 import { GenerarInfoIA } from '../../components/GenerarInfoIA'
+import { FotoYMapaHotel } from '../../components/FotoYMapaHotel'
 
 const LABELS_COSTOS = {
   boleto: '✈️ Boleto aéreo',
@@ -175,6 +176,7 @@ function OpcionHotelUnico({ hotel, hIndex, habitaciones }) {
       <p><strong>Régimen:</strong> {hotel.regimen} · <strong>Comisión:</strong> {hotel.comision}%</p>
       {hotel.operador && <p><strong>Operador:</strong> {hotel.operador}</p>}
       {hotel.comentario && <p style={{ fontStyle: 'italic', color: '#555' }}>{hotel.comentario}</p>}
+      <FotoYMapaHotel lat={hotel.lat} lng={hotel.lng} fotoUrl={hotel.fotoUrl} direccion={hotel.direccion} />
       {hotel.noRefPrepago && (
         <p style={{ color: '#a00' }}>Promoción 100% pre paga y en gastos totales (sin devolución)</p>
       )}
@@ -237,6 +239,7 @@ function BloqueHotelResultado({ titulo, datos }) {
       <p style={{ fontSize: '0.85rem', color: '#555' }}>{datos.regimen} · Comisión {datos.comision}%</p>
       {datos.operador && <p style={{ fontSize: '0.85rem' }}>Operador: {datos.operador}</p>}
       {datos.comentario && <p style={{ fontSize: '0.85rem', fontStyle: 'italic', color: '#555' }}>{datos.comentario}</p>}
+      <FotoYMapaHotel lat={datos.lat} lng={datos.lng} fotoUrl={datos.fotoUrl} direccion={datos.direccion} />
       {datos.noRefPrepago && (
         <p style={{ fontSize: '0.8rem', color: '#a00' }}>Promoción 100% pre paga (sin devolución)</p>
       )}
