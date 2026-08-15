@@ -82,11 +82,20 @@ export default async function VerCotizacion({ params }) {
       )}
       <p><strong>Fecha de finalización (calculada):</strong> {cotizacion.fecha_finalizacion || '—'}</p>
 
-      {cotizacion.itinerario && cotizacion.itinerario.length > 0 && (
+      {(cotizacion.itinerario_imagen_url || (cotizacion.itinerario && cotizacion.itinerario.length > 0)) && (
         <>
           <hr style={{ margin: '1.5rem 0' }} />
           <h2>Itinerario Aéreo</h2>
-          {cotizacion.itinerario.map(s => (
+
+          {cotizacion.itinerario_imagen_url && (
+            <img
+              src={cotizacion.itinerario_imagen_url}
+              alt="Itinerario"
+              style={{ maxWidth: '100%', maxHeight: '400px', border: '1px solid #ccc', display: 'block', marginBottom: '0.75rem' }}
+            />
+          )}
+
+          {cotizacion.itinerario && cotizacion.itinerario.map(s => (
             <p key={s.segmento} style={{ marginBottom: '0.3rem' }}>
               <strong>{airlineName(s.aerolineaCod)} {s.aerolineaCod}{s.numeroVuelo}</strong>
               {' — '}{s.origen} ({cityName(s.origen)}) {s.horaSalida} → {s.destino} ({cityName(s.destino)}) {s.horaLlegada}

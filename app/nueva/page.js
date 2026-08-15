@@ -7,6 +7,7 @@ import { SeccionInfoIA } from '../components/SeccionInfoIA'
 import { PanelHistorialHoteles } from '../components/PanelHistorialHoteles'
 import { FotoYMapaHotel } from '../components/FotoYMapaHotel'
 import { FotoHotelManual } from '../components/FotoHotelManual'
+import { getCookie, setCookie } from '../lib/cookies'
 
 import {
   composicion, resumenPax,
@@ -26,6 +27,8 @@ import { parsearAmadeus } from '../lib/amadeus-parser'
 export default function NuevaCotizacion() {
   const router = useRouter()
   const [destinos, setDestinos] = useState([])
+  const [agentes, setAgentes] = useState([])
+  const [agenteId, setAgenteId] = useState('')
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
 
@@ -59,6 +62,8 @@ export default function NuevaCotizacion() {
 
   // ----- Sección 4: Itinerario Aéreo -----
   const [itinerarioTexto, setItinerarioTexto] = useState('')
+  const [itinerarioImagenUrl, setItinerarioImagenUrl] = useState(null)
+  const [subiendoImagen, setSubiendoImagen] = useState(false)
 
   // ----- Información IA (Módulo 9) -----
   const [climaTexto, setClimaTexto] = useState(null)
@@ -85,7 +90,12 @@ export default function NuevaCotizacion() {
 
   useEffect(() => {
     cargarDestinos()
+    cargarAgentes()
   }, [])
+
+  useEffect(() => {
+    if (agenteId) setCookie('agente_id', agenteId)
+  }, [agenteId])
 
   useEffect(() => {
     setHotelesOpciones(prev => prev.map(hotel => {
@@ -125,6 +135,20 @@ export default function NuevaCotizacion() {
     if (data) setDestinos(data)
   }
 
+  async function cargarAgentes() {
+    const { data } = await supabase.from('agentes').select('id, nombre, apellido').order('nombre')
+    if (data) {
+      setAgentes(data)
+      const cookieAgente = getCookie('agente_id')
+      if (cookieAgente && data.some(a => a.id === cookieAgente)) {
+        setAgenteId(cookieAgente)
+      } else {
+        const martin = data.find(a => a.nombre === 'Martín')
+        if (martin) setAgenteId(martin.id)
+      }
+    }
+  }
+
   async function handleAgregarDestino(e) {
     e.preventDefault()
     setGuardandoDestino(true)
@@ -137,6 +161,29 @@ export default function NuevaCotizacion() {
     setNuevoDestinoPais('')
     setMostrarNuevoDestino(false)
     await cargarDestinos()
+  }
+
+  async function subirImagenItinerario(file) {
+    setSubiendoImagen(true)
+    try {
+      const extension = file.type.split('/')[1] || 'png'
+      const nombreArchivo = `itinerario-${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`
+      const { error } = await supabase.storage.from('itinerarios').upload(nombreArchivo, file)
+      if (error) {
+        console.error('Error subiendo imagen:', error)
+        setSubiendoImagen(false)
+        return
+      }
+      const { data } = supabase.storage.from('itinerarios').getPublicUrl(nombreArchivo)
+      setItinerarioImagenUrl(data.publicUrl)
+    } catch (e) {
+      console.error('Excepción subiendo imagen:', e)
+    }
+    setSubiendoImagen(false)
+  }
+
+  function quitarImagenItinerario() {
+    setItinerarioImagenUrl(null)
   }
 
   // ---- Habitaciones ----
@@ -636,6 +683,7 @@ export default function NuevaCotizacion() {
 
     const datosCotizacion = {
       cliente_id: cliente.id,
+      agente_id: agenteId,
       cliente_nombre: `${nombre} ${apellido}`,
       tipo_destino: tipoDestino,
       fecha_inicio_viaje: fechaInicioViaje,
@@ -645,6 +693,7 @@ export default function NuevaCotizacion() {
       hoteles: hotelesOpciones,
       no_incluye: noIncluye,
       itinerario: segmentosItinerario.length > 0 ? segmentosItinerario : null,
+      itinerario_imagen_url: itinerarioImagenUrl,
       clima_texto: climaTexto,
       paseos: paseosIA,
     }
@@ -713,6 +762,7 @@ export default function NuevaCotizacion() {
           email={email} setEmail={setEmail}
           origenConsulta={origenConsulta} setOrigenConsulta={setOrigenConsulta}
           seguimiento={seguimiento} setSeguimiento={setSeguimiento}
+          agentes={agentes} agenteId={agenteId} setAgenteId={setAgenteId}
         />
 
         <hr style={{ margin: '1.5rem 0' }} />
@@ -747,6 +797,8 @@ export default function NuevaCotizacion() {
 
         <SeccionItinerario
           itinerarioTexto={itinerarioTexto} setItinerarioTexto={setItinerarioTexto}
+          itinerarioImagenUrl={itinerarioImagenUrl} subiendoImagen={subiendoImagen}
+          onImagenSeleccionada={subirImagenItinerario} onQuitarImagen={quitarImagenItinerario}
         />
 
         <hr style={{ margin: '1.5rem 0' }} />
