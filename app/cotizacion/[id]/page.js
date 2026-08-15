@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase'
 import { airlineName, cityName } from '../../lib/amadeus-parser'
 import { GenerarInfoIA } from '../../components/GenerarInfoIA'
 import { FotoYMapaHotel } from '../../components/FotoYMapaHotel'
+import Link from 'next/link'
 
 const LABELS_COSTOS = {
   boleto: '✈️ Boleto aéreo',
@@ -173,6 +174,31 @@ export default async function VerCotizacion({ params }) {
         climaGuardado={cotizacion.clima_texto}
         paseosGuardados={cotizacion.paseos}
       />
+
+      <hr style={{ margin: '1.5rem 0' }} />
+
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <Link href="/cotizaciones"><button type="button">Ver cotizaciones</button></Link>
+        <Link href="/nueva"><button type="button">Limpiar</button></Link>
+        <Link
+          href={`/nueva?dup_nombre=${encodeURIComponent(cliente?.nombre || '')}&dup_apellido=${encodeURIComponent(cliente?.apellido || '')}&dup_telefono=${encodeURIComponent(cliente?.telefono || '')}&dup_email=${encodeURIComponent(cliente?.email || '')}`}
+        >
+          <button type="button">Duplicar</button>
+        </Link>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+        <a href={`/c/${cotizacion.id}/whatsapp`} target="_blank" rel="noopener noreferrer">
+          <button type="button">WhatsApp</button>
+        </a>
+        <a href={`/c/${cotizacion.id}/pdf`} target="_blank" rel="noopener noreferrer">
+          <button type="button">Cotización PDF</button>
+        </a>
+        <a href={`/c/${cotizacion.id}`} target="_blank" rel="noopener noreferrer">
+          <button type="button">Cotización Online</button>
+        </a>
+      </div>
+
 
     </main>
   )

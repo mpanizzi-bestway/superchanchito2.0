@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { SeccionInfoIA } from '../components/SeccionInfoIA'
 import { PanelHistorialHoteles } from '../components/PanelHistorialHoteles'
@@ -26,6 +26,7 @@ import { parsearAmadeus } from '../lib/amadeus-parser'
 
 export default function NuevaCotizacion() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [destinos, setDestinos] = useState([])
   const [agentes, setAgentes] = useState([])
   const [agenteId, setAgenteId] = useState('')
@@ -91,6 +92,17 @@ export default function NuevaCotizacion() {
   useEffect(() => {
     cargarDestinos()
     cargarAgentes()
+  }, [])
+
+  useEffect(() => {
+    const dupNombre = searchParams.get('dup_nombre')
+    if (dupNombre) {
+      setNombre(dupNombre)
+      setApellido(searchParams.get('dup_apellido') || '')
+      setTelefono(searchParams.get('dup_telefono') || '')
+      setEmail(searchParams.get('dup_email') || '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
