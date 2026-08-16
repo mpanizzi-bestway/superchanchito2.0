@@ -32,6 +32,15 @@ export function BloqueHotelSimple({
           <option>Todo Incluido</option>
         </select>
       </div>
+      <div style={{ marginTop: '0.5rem' }}>
+        <label>Link del hotel (opcional)</label><br />
+        <input
+          value={datos.link}
+          onChange={e => onCampo('link', e.target.value)}
+          placeholder="https://..."
+          style={{ width: '100%' }}
+        />
+      </div>
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
         <label>
           <input type="checkbox" checked={datos.noRefPrepago} onChange={e => onCampo('noRefPrepago', e.target.checked)} />

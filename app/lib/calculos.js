@@ -37,6 +37,7 @@ export function crearHotelVacio(cantidadHabitaciones, expandido = true) {
     operador: '',
     comision: 17,
     comentario: '',
+    link: '',
     lat: null,
     lng: null,
     fotoUrl: null,
@@ -48,7 +49,7 @@ export function crearHotelVacio(cantidadHabitaciones, expandido = true) {
 }
 
 export function crearHotelSimpleVacio() {
-  return { nombre: '', regimen: 'Solo Alojamiento', noRefPrepago: false, operador: '', comision: 17, comentario: '', lat: null, lng: null, fotoUrl: null, fotoConsultada: false, direccion: null }
+  return { nombre: '', regimen: 'Solo Alojamiento', noRefPrepago: false, operador: '', comision: 17, comentario: '', link: '', lat: null, lng: null, fotoUrl: null, fotoConsultada: false, direccion: null }
 }
 
 export function crearHabitacionDobleVacia() {

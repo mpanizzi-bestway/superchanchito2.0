@@ -2,11 +2,13 @@
 
 import { useMemo, useRef } from 'react'
 import { parsearAmadeus, airlineName, cityName } from '../lib/amadeus-parser'
+import { FAMILIAS_TARIFARIAS } from '../lib/familiasTarifarias'
 
 export function SeccionItinerario({
   itinerarioTexto, setItinerarioTexto,
   itinerarioImagenUrl, subiendoImagen,
   onImagenSeleccionada, onQuitarImagen,
+  familiaTarifaria, setFamiliaTarifaria,
 }) {
   const inputFileRef = useRef(null)
   const segmentos = useMemo(() => parsearAmadeus(itinerarioTexto), [itinerarioTexto])
@@ -78,31 +80,32 @@ export function SeccionItinerario({
         </div>
       )}
 
-      {itinerarioTexto.trim() !== '' && (
-        segmentos.length === 0 ? (
-          <p style={{ color: '#a00', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-            No se reconoció ningún vuelo en el texto pegado — revisá el formato. La cotización se puede guardar igual.
-          </p>
-        ) : (
-          <div style={{ marginTop: '0.75rem' }}>
-            {segmentos.map(s => (
-              <div
-                key={s.segmento}
-                style={{
-                  display: 'flex', gap: '1rem', flexWrap: 'wrap',
-                  padding: '0.5rem', borderBottom: '1px solid #eee', fontSize: '0.9rem',
-                }}
-              >
-                <span style={{ minWidth: '160px' }}>{airlineName(s.aerolineaCod)} {s.aerolineaCod}{s.numeroVuelo}</span>
-                <span>{s.origen} ({cityName(s.origen)}) {s.horaSalida}</span>
-                <span>→</span>
-                <span>{s.destino} ({cityName(s.destino)}) {s.horaLlegada}{s.llegadaSiguiente ? ' +1' : ''}</span>
-                <span style={{ color: '#555' }}>{s.fechaSalida}</span>
-              </div>
-            ))}
-          </div>
-        )
+      {itinerarioTexto.trim() !== '' && segmentos.length === 0 && (
+        <p style={{ color: '#a00', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+          No se reconoció ningún vuelo en el texto pegado — revisá el formato. La cotización se puede guardar igual.
+        </p>
       )}
+
+      <div style={{ marginTop: '0.75rem' }}>
+        <label>Familia tarifaria</label><br />
+        <select value={familiaTarifaria} onChange={e => setFamiliaTarifaria(e.target.value)}>
+          <option value="">Seleccionar...</option>
+          {Object.keys(FAMILIAS_TARIFARIAS).map(nombre => (
+            <option key={nombre} value={nombre}>{nombre}</option>
+          ))}
+        </select>
+
+        {familiaTarifaria && FAMILIAS_TARIFARIAS[familiaTarifaria] && (
+          <div style={{ marginTop: '0.4rem', fontSize: '0.85rem', color: '#555' }}>
+            <p style={{ margin: '0.15rem 0' }}>
+              {FAMILIAS_TARIFARIAS[familiaTarifaria].emoji} <strong>Incluye:</strong> {FAMILIAS_TARIFARIAS[familiaTarifaria].incluye}
+            </p>
+            <p style={{ margin: '0.15rem 0', color: '#a00' }}>
+              <strong>No incluye:</strong> {FAMILIAS_TARIFARIAS[familiaTarifaria].noIncluye}
+            </p>
+          </div>
+        )}
+      </div>
     </>
   )
 }

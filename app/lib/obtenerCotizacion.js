@@ -3,7 +3,7 @@ export async function obtenerCotizacionCompleta(supabase, id) {
     .from('cotizaciones')
     .select(`
       *,
-      cliente:cliente_id ( nombre, apellido, telefono, email ),
+      cliente:cliente_id ( nombre, apellido, telefono, email, origen_consulta ),
       agente:agente_id ( nombre, apellido, cargo, whatsapp, email, interno ),
       destino:destino_id ( ciudad, pais ),
       destino1:destino1_id ( ciudad, pais ),

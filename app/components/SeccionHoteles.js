@@ -312,6 +312,18 @@ export function SeccionHoteles({
                       </select>
                     </div>
 
+                    <div>
+                      <label>Link del hotel (opcional)</label><br />
+                      <input
+                        value={hotel.link}
+                        onChange={e =>
+                          actualizarHotelCampo(hIndex, 'link', e.target.value)
+                        }
+                        placeholder="https://..."
+                        style={{ width: '200px' }}
+                      />
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => generarComentarioHotel(hIndex)}

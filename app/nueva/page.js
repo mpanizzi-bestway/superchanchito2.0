@@ -64,6 +64,7 @@ export default function NuevaCotizacion() {
   // ----- Sección 4: Itinerario Aéreo -----
   const [itinerarioTexto, setItinerarioTexto] = useState('')
   const [itinerarioImagenUrl, setItinerarioImagenUrl] = useState(null)
+  const [familiaTarifaria, setFamiliaTarifaria] = useState('')
   const [subiendoImagen, setSubiendoImagen] = useState(false)
 
   // ----- Información IA (Módulo 9) -----
@@ -706,6 +707,8 @@ export default function NuevaCotizacion() {
       no_incluye: noIncluye,
       itinerario: segmentosItinerario.length > 0 ? segmentosItinerario : null,
       itinerario_imagen_url: itinerarioImagenUrl,
+      itinerario_imagen_url: itinerarioImagenUrl,
+      familia_tarifaria: familiaTarifaria,
       clima_texto: climaTexto,
       paseos: paseosIA,
     }
@@ -811,6 +814,7 @@ export default function NuevaCotizacion() {
           itinerarioTexto={itinerarioTexto} setItinerarioTexto={setItinerarioTexto}
           itinerarioImagenUrl={itinerarioImagenUrl} subiendoImagen={subiendoImagen}
           onImagenSeleccionada={subirImagenItinerario} onQuitarImagen={quitarImagenItinerario}
+          familiaTarifaria={familiaTarifaria} setFamiliaTarifaria={setFamiliaTarifaria}
         />
 
         <hr style={{ margin: '1.5rem 0' }} />
