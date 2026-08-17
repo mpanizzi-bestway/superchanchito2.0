@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 import { SeccionInfoIA } from '../components/SeccionInfoIA'
@@ -24,7 +24,7 @@ import { SeccionCostosFijos } from '../components/SeccionCostosFijos'
 import { SeccionHoteles } from '../components/SeccionHoteles'
 import { parsearAmadeus } from '../lib/amadeus-parser'
 
-export default function NuevaCotizacion() {
+function NuevaCotizacionInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [destinos, setDestinos] = useState([])
@@ -911,5 +911,13 @@ export default function NuevaCotizacion() {
         {error && <p style={{ color: 'red' }}>{error}</p>}
       </form>
     </main>
+  )
+}
+
+export default function NuevaCotizacion() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem' }}>Cargando...</div>}>
+      <NuevaCotizacionInner />
+    </Suspense>
   )
 }
