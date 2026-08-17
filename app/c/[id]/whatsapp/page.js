@@ -1,6 +1,6 @@
 import { supabase } from '../../../lib/supabase'
 import { obtenerCotizacionCompleta } from '../../../lib/obtenerCotizacion'
-import { generarTextoWhatsapp } from '../../../lib/textoWhatsapp'
+import { generarSeccionesWhatsapp, generarTextoWhatsapp } from '../../../lib/textoWhatsapp'
 import { VistaWhatsapp } from '../../../components/VistaWhatsapp'
 
 export default async function CotizacionWhatsapp({ params }) {
@@ -11,11 +11,12 @@ export default async function CotizacionWhatsapp({ params }) {
     return <main style={{ padding: '2rem' }}><p>No se encontró la cotización.</p></main>
   }
 
+  const secciones = generarSeccionesWhatsapp(cotizacion)
   const texto = generarTextoWhatsapp(cotizacion)
 
   return (
     <main style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
-      <VistaWhatsapp texto={texto} />
+      <VistaWhatsapp secciones={secciones} texto={texto} />
     </main>
   )
 }

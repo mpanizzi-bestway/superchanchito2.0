@@ -1,3 +1,4 @@
+import { renderEstrellas } from '../lib/calculos'
 import { FotoYMapaHotel } from './FotoYMapaHotel'
 import { FotoHotelManual } from './FotoHotelManual'
 
@@ -5,11 +6,13 @@ export function BloqueHotelSimple({
   titulo, datos, onCampo, onComision,
   onGenerarComentario, generandoComentario,
   onNombreChange,
-  onGuardarUrl,
+  onGuardar,
 }) {
   return (
     <div style={{ border: '1px solid #ddd', padding: '0.75rem' }}>
-      <p style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>{titulo}</p>
+      <p style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+        {titulo}{datos.estrellas ? ` ${renderEstrellas(datos.estrellas)}` : ''}
+      </p>
       <div>
         <label>Nombre del hotel</label><br />
         <input
@@ -31,15 +34,6 @@ export function BloqueHotelSimple({
           <option>Pensión Completa</option>
           <option>Todo Incluido</option>
         </select>
-      </div>
-      <div style={{ marginTop: '0.5rem' }}>
-        <label>Link del hotel (opcional)</label><br />
-        <input
-          value={datos.link}
-          onChange={e => onCampo('link', e.target.value)}
-          placeholder="https://..."
-          style={{ width: '100%' }}
-        />
       </div>
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.5rem' }}>
         <label>
@@ -77,9 +71,12 @@ export function BloqueHotelSimple({
       />
       <FotoYMapaHotel lat={datos.lat} lng={datos.lng} fotoUrl={datos.fotoUrl} direccion={datos.direccion} fotoConsultada={datos.fotoConsultada} />
       <FotoHotelManual
+        fotoUrl={datos.fotoUrl}
+        estrellas={datos.estrellas}
+        link={datos.link}
         fotoConsultada={datos.fotoConsultada}
         hayNombre={!!datos.nombre?.trim()}
-        onGuardarUrl={onGuardarUrl}
+        onGuardar={onGuardar}
       />
     </div>
   )

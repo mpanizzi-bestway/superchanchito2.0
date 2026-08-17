@@ -1,4 +1,4 @@
-import { resumenPax } from '../lib/calculos'
+import { resumenPax, renderEstrellas } from '../lib/calculos'
 import { FilaHotelCalculada, FilaHotelEditable, FilaHotelPorcentaje } from './FilaHotelComun'
 import { FilaHotelCosto } from './HotelUnico'
 import { BloqueHotelSimple, FilaHotelCostoDoble } from './HotelDoble'
@@ -30,7 +30,9 @@ export function SeccionHoteles({
             <h3 style={{ cursor: 'pointer' }} onClick={() => toggleExpandido(hIndex)}>
               {hotel.expandido ? '▼' : '▶'} Opción {hIndex + 1}
               {hotel.modo === 'unico' && hotel.nombre && (
-                <span style={{ fontWeight: 'normal', color: '#555' }}> — {hotel.nombre}</span>
+                <span style={{ fontWeight: 'normal', color: '#555' }}>
+                  {' — '}{hotel.nombre}{hotel.estrellas ? ` ${renderEstrellas(hotel.estrellas)}` : ''}
+                </span>
               )}
             </h3>
 
@@ -58,7 +60,7 @@ export function SeccionHoteles({
                       onGenerarComentario={() => generarComentarioHotelDoble(hIndex, 'hotel1')}
                       generandoComentario={generandoComentario[`${hIndex}-hotel1`]}
                       onNombreChange={valor => programarBusquedaHotelDoble(hIndex, 'hotel1', valor)}
-                      onGuardarUrl={url => guardarFotoHotelManualDoble(hIndex, 'hotel1', url)}
+                      onGuardar={datos => guardarFotoHotelManualDoble(hIndex, 'hotel2', datos)}
                     />
 
                     <BloqueHotelSimple
@@ -371,9 +373,12 @@ export function SeccionHoteles({
                     fotoConsultada={hotel.fotoConsultada}
                   />
                   <FotoHotelManual
+                    fotoUrl={hotel.fotoUrl}
+                    estrellas={hotel.estrellas}
+                    link={hotel.link}
                     fotoConsultada={hotel.fotoConsultada}
                     hayNombre={!!hotel.nombre?.trim()}
-                    onGuardarUrl={url => guardarFotoHotelManual(hIndex, url)}
+                    onGuardar={datos => guardarFotoHotelManual(hIndex, datos)}
                   />
 
                   <div

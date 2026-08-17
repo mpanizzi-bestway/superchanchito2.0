@@ -375,22 +375,29 @@ export default function NuevaCotizacion() {
     setGenerandoLugar(prev => ({ ...prev, [key]: false }))
   }
 
+  // ---- Fotos de hotel: lee las tres columnas (url_foto, estrellas, link) ----
   async function buscarFotoHotel(hotelIndex, nombreHotel) {
     if (!nombreHotel?.trim()) return
     const d = destinosParaIA()[0]
     if (!d) return
-    let urlEncontrada = null
+    let resultado = null
     try {
       const { data, error } = await supabase.rpc('buscar_hotel_foto', {
         p_nombre: normalizarNombre(nombreHotel),
         p_ciudad: d.ciudad,
       })
       if (error) console.error('Error buscando foto:', error)
-      urlEncontrada = data || null
+      resultado = data?.[0] || null
     } catch (e) {
       console.error('Excepción buscando foto:', e)
     }
-    setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : { ...h, fotoUrl: urlEncontrada, fotoConsultada: true }))
+    setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : {
+      ...h,
+      fotoUrl: resultado?.url_foto || null,
+      estrellas: resultado?.estrellas || null,
+      link: resultado?.link || h.link,
+      fotoConsultada: true,
+    }))
   }
 
   async function buscarFotoHotelDoble(hotelIndex, cual, nombreHotel) {
@@ -398,23 +405,30 @@ export default function NuevaCotizacion() {
     const destinosIA = destinosParaIA()
     const d = cual === 'hotel1' ? destinosIA[0] : destinosIA[1]
     if (!d) return
-    let urlEncontrada = null
+    let resultado = null
     try {
       const { data, error } = await supabase.rpc('buscar_hotel_foto', {
         p_nombre: normalizarNombre(nombreHotel),
         p_ciudad: d.ciudad,
       })
       if (error) console.error('Error buscando foto:', error)
-      urlEncontrada = data || null
+      resultado = data?.[0] || null
     } catch (e) {
       console.error('Excepción buscando foto:', e)
     }
     setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : {
-      ...h, [cual]: { ...h[cual], fotoUrl: urlEncontrada, fotoConsultada: true },
+      ...h,
+      [cual]: {
+        ...h[cual],
+        fotoUrl: resultado?.url_foto || null,
+        estrellas: resultado?.estrellas || null,
+        link: resultado?.link || h[cual].link,
+      },
     }))
   }
 
-  async function guardarFotoHotelManual(hotelIndex, url) {
+  // ---- Fotos de hotel manual: guarda url_foto + estrellas + link juntos ----
+  async function guardarFotoHotelManual(hotelIndex, { url, estrellas, link }) {
     const hotel = hotelesOpciones[hotelIndex]
     const d = destinosParaIA()[0]
     if (!hotel.nombre?.trim() || !d) return
@@ -424,16 +438,20 @@ export default function NuevaCotizacion() {
         nombre_normalizado: normalizarNombre(hotel.nombre),
         ciudad: d.ciudad,
         pais: d.pais,
-        url_foto: url,
+        url_foto: url || null,
+        estrellas: estrellas || null,
+        link: link || null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'nombre_normalizado,ciudad' })
-      setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : { ...h, fotoUrl: url, fotoConsultada: true }))
+      setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : {
+        ...h, fotoUrl: url || null, estrellas: estrellas || null, link: link || '', fotoConsultada: true,
+      }))
     } catch {
       // no bloquea
     }
   }
 
-  async function guardarFotoHotelManualDoble(hotelIndex, cual, url) {
+  async function guardarFotoHotelManualDoble(hotelIndex, cual, { url, estrellas, link }) {
     const hotel = hotelesOpciones[hotelIndex]
     const datosHotel = hotel[cual]
     const destinosIA = destinosParaIA()
@@ -445,11 +463,13 @@ export default function NuevaCotizacion() {
         nombre_normalizado: normalizarNombre(datosHotel.nombre),
         ciudad: d.ciudad,
         pais: d.pais,
-        url_foto: url,
+        url_foto: url || null,
+        estrellas: estrellas || null,
+        link: link || null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'nombre_normalizado,ciudad' })
       setHotelesOpciones(prev => prev.map((h, i) => i !== hotelIndex ? h : {
-        ...h, [cual]: { ...h[cual], fotoUrl: url, fotoConsultada: true },
+        ...h, [cual]: { ...h[cual], fotoUrl: url || null, estrellas: estrellas || null, link: link || '', fotoConsultada: true },
       }))
     } catch {
       // no bloquea
@@ -706,7 +726,6 @@ export default function NuevaCotizacion() {
       hoteles: hotelesOpciones,
       no_incluye: noIncluye,
       itinerario: segmentosItinerario.length > 0 ? segmentosItinerario : null,
-      itinerario_imagen_url: itinerarioImagenUrl,
       itinerario_imagen_url: itinerarioImagenUrl,
       familia_tarifaria: familiaTarifaria,
       clima_texto: climaTexto,
