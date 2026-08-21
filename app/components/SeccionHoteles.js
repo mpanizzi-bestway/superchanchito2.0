@@ -61,7 +61,7 @@ export function SeccionHoteles({
                       onGenerarComentario={() => generarComentarioHotelDoble(hIndex, 'hotel1')}
                       generandoComentario={generandoComentario[`${hIndex}-hotel1`]}
                       onNombreChange={valor => programarBusquedaHotelDoble(hIndex, 'hotel1', valor)}
-                      onGuardar={datos => guardarFotoHotelManualDoble(hIndex, 'hotel2', datos)}
+                      onGuardar={datos => guardarFotoHotelManualDoble(hIndex, 'hotel1', datos)}
                     />
 
                     <BloqueHotelSimple
@@ -72,7 +72,7 @@ export function SeccionHoteles({
                       onGenerarComentario={() => generarComentarioHotelDoble(hIndex, 'hotel2')}
                       generandoComentario={generandoComentario[`${hIndex}-hotel2`]}
                       onNombreChange={valor => programarBusquedaHotelDoble(hIndex, 'hotel2', valor)}
-                      onGuardarUrl={url => guardarFotoHotelManualDoble(hIndex, 'hotel2', url)}
+                      onGuardar={datos => guardarFotoHotelManualDoble(hIndex, 'hotel2', datos)}
                     />
                   </div>
 
