@@ -1,0 +1,1 @@
+export const OPERADORES = ['ABTOUR', 'SIUR', 'Aeromundo', 'Itaparica']

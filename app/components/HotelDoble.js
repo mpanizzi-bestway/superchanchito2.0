@@ -1,6 +1,7 @@
 import { renderEstrellas } from '../lib/calculos'
 import { FotoYMapaHotel } from './FotoYMapaHotel'
 import { FotoHotelManual } from './FotoHotelManual'
+import { SelectorOperador } from './SelectorOperador'
 
 export function BloqueHotelSimple({
   titulo, datos, onCampo, onComision,
@@ -40,10 +41,7 @@ export function BloqueHotelSimple({
           <input type="checkbox" checked={datos.noRefPrepago} onChange={e => onCampo('noRefPrepago', e.target.checked)} />
           {' '}NO REF/PREPAGO
         </label>
-        <div>
-          <label>Operador</label><br />
-          <input style={{ width: '140px' }} value={datos.operador} onChange={e => onCampo('operador', e.target.value)} />
-        </div>
+        <SelectorOperador value={datos.operador} onChange={valor => onCampo('operador', valor)} />
         <div>
           <label>Comm. %</label><br />
           <input type="number" style={{ width: '60px' }} value={datos.comision} onChange={e => onComision(e.target.value)} />

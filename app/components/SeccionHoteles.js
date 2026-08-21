@@ -4,6 +4,7 @@ import { FilaHotelCosto } from './HotelUnico'
 import { BloqueHotelSimple, FilaHotelCostoDoble } from './HotelDoble'
 import { FotoYMapaHotel } from './FotoYMapaHotel'
 import { FotoHotelManual } from './FotoHotelManual'
+import { SelectorOperador } from './SelectorOperador'
 
 export function SeccionHoteles({
   hotelesOpciones,
@@ -314,18 +315,6 @@ export function SeccionHoteles({
                       </select>
                     </div>
 
-                    <div>
-                      <label>Link del hotel (opcional)</label><br />
-                      <input
-                        value={hotel.link}
-                        onChange={e =>
-                          actualizarHotelCampo(hIndex, 'link', e.target.value)
-                        }
-                        placeholder="https://..."
-                        style={{ width: '200px' }}
-                      />
-                    </div>
-
                     <button
                       type="button"
                       onClick={() => generarComentarioHotel(hIndex)}
@@ -405,20 +394,10 @@ export function SeccionHoteles({
                       {' '}NO REF/PREPAGO
                     </label>
 
-                    <div>
-                      <label>Operador (opcional)</label><br />
-                      <input
-                        style={{ width: '180px' }}
-                        value={hotel.operador}
-                        onChange={e =>
-                          actualizarHotelCampo(
-                            hIndex,
-                            'operador',
-                            e.target.value
-                          )
-                        }
-                      />
-                    </div>
+                    <SelectorOperador
+                      value={hotel.operador}
+                      onChange={valor => actualizarHotelCampo(hIndex, 'operador', valor)}
+                    />
 
                     <div>
                       <label>Comm. %</label><br />

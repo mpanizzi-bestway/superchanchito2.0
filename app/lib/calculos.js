@@ -5,6 +5,7 @@ export function composicion(adl) {
 }
 
 export function resumenPax(pax) {
+  if (!pax) return ''
   const partes = [`${pax.adl} ADL`]
   if (pax.chd > 0) partes.push(`${pax.chd} CHD`)
   if (pax.inf > 0) partes.push(`${pax.inf} INF`)

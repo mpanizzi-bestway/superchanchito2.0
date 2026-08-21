@@ -7,6 +7,7 @@ export function FotoHotelManual({ fotoUrl, estrellas, link, fotoConsultada, hayN
   const [estrellasInput, setEstrellasInput] = useState('')
   const [linkInput, setLinkInput] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [guardado, setGuardado] = useState(false)
 
   useEffect(() => {
     setUrlInput(fotoUrl || '')
@@ -22,6 +23,8 @@ export function FotoHotelManual({ fotoUrl, estrellas, link, fotoConsultada, hayN
       link: linkInput.trim(),
     })
     setGuardando(false)
+    setGuardado(true)
+    setTimeout(() => setGuardado(false), 2500)
   }
 
   if (!hayNombre) return null
@@ -30,6 +33,11 @@ export function FotoHotelManual({ fotoUrl, estrellas, link, fotoConsultada, hayN
     <div style={{ marginTop: '0.5rem', border: '1px dashed #ccc', padding: '0.5rem' }}>
       {fotoConsultada === false && (
         <p style={{ fontSize: '0.8rem', color: '#555', margin: '0 0 0.4rem' }}>Buscando datos guardados...</p>
+      )}
+      {link && (
+        <p style={{ fontSize: '0.8rem', margin: '0 0 0.4rem' }}>
+          🔗 <a href={link} target="_blank" rel="noopener noreferrer">{link}</a>
+        </p>
       )}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <input
@@ -58,7 +66,7 @@ export function FotoHotelManual({ fotoUrl, estrellas, link, fotoConsultada, hayN
         style={{ width: '100%', fontSize: '0.8rem', marginTop: '0.4rem', color: '#111', background: '#fff', border: '1px solid #ccc', padding: '0.2rem' }}
       />
       <button type="button" onClick={handleGuardar} disabled={guardando} style={{ fontSize: '0.8rem', marginTop: '0.4rem' }}>
-        {guardando ? 'Guardando...' : 'Guardar datos del hotel'}
+        {guardando ? 'Guardando...' : guardado ? '✓ Guardado' : 'Guardar datos del hotel'}
       </button>
     </div>
   )

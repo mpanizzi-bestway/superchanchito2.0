@@ -22,6 +22,7 @@ import { SeccionHabitaciones } from '../components/SeccionHabitaciones'
 import { SeccionItinerario } from '../components/SeccionItinerario'
 import { SeccionCostosFijos } from '../components/SeccionCostosFijos'
 import { SeccionHoteles } from '../components/SeccionHoteles'
+import { SeccionComparativaHoteles } from '../components/SeccionComparativaHoteles'
 import { parsearAmadeus } from '../lib/amadeus-parser'
 
 function NuevaCotizacionInner() {
@@ -73,6 +74,8 @@ function NuevaCotizacionInner() {
   const [generandoIA, setGenerandoIA] = useState(false)
   const [generandoComentario, setGenerandoComentario] = useState({})
   const [generandoLugar, setGenerandoLugar] = useState({})
+  const [comparativaHoteles, setComparativaHoteles] = useState([])
+  const [generandoComparativa, setGenerandoComparativa] = useState(false)
   const debounceIA = useRef(null)
   const debounceHotel = useRef({})
 
@@ -120,6 +123,17 @@ function NuevaCotizacionInner() {
     }))
   }, [cantidadHabitaciones])
 
+  useEffect(() => {
+    function handleBeforeUnload(e) {
+      if (nombre.trim() || apellido.trim()) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [nombre, apellido])  
+  
   useEffect(() => {
     if (debounceIA.current) clearTimeout(debounceIA.current)
     const destinosIA = destinosParaIA()
@@ -284,9 +298,10 @@ function NuevaCotizacionInner() {
   }
 
   // ---- IA: comentario de hotel ----
-  async function generarComentarioHotel(hotelIndex) {
+  async function generarComentarioHotel(hotelIndex, nombreHotel) {
     const hotel = hotelesOpciones[hotelIndex]
-    if (!hotel.nombre) return
+    const nombre = nombreHotel ?? hotel.nombre
+    if (!nombre?.trim()) return
     const d = destinosParaIA()[0]
     if (!d) return
 
@@ -296,19 +311,20 @@ function NuevaCotizacionInner() {
       const res = await fetch('/api/hotel-comentario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: hotel.nombre, ciudad: d.ciudad, pais: d.pais }),
+        body: JSON.stringify({ nombre, ciudad: d.ciudad, pais: d.pais }),
       }).then(r => r.json()).catch(() => ({ comentario: null }))
       actualizarHotelCampo(hotelIndex, 'comentario', res.comentario || '')
     } catch {
-      // se ignora, no bloquea
+      // no bloquea
     }
     setGenerandoComentario(prev => ({ ...prev, [key]: false }))
   }
 
-  async function generarComentarioHotelDoble(hotelIndex, cual) {
+  async function generarComentarioHotelDoble(hotelIndex, cual, nombreHotel) {
     const hotel = hotelesOpciones[hotelIndex]
     const datosHotel = hotel[cual]
-    if (!datosHotel.nombre) return
+    const nombre = nombreHotel ?? datosHotel.nombre
+    if (!nombre?.trim()) return
     const destinosIA = destinosParaIA()
     const d = cual === 'hotel1' ? destinosIA[0] : destinosIA[1]
     if (!d) return
@@ -319,13 +335,42 @@ function NuevaCotizacionInner() {
       const res = await fetch('/api/hotel-comentario', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: datosHotel.nombre, ciudad: d.ciudad, pais: d.pais }),
+        body: JSON.stringify({ nombre, ciudad: d.ciudad, pais: d.pais }),
       }).then(r => r.json()).catch(() => ({ comentario: null }))
       actualizarHotelSimpleCampo(hotelIndex, cual, 'comentario', res.comentario || '')
     } catch {
-      // se ignora, no bloquea
+      // no bloquea
     }
     setGenerandoComentario(prev => ({ ...prev, [key]: false }))
+  }
+
+  async function generarComparativaHoteles() {
+    const d = destinosParaIA()[0]
+    if (!d || hotelesOpciones.length < 2) return
+
+    const resumen = hotelesOpciones.map(hotel => {
+      if (hotel.modo === 'doble') {
+        return {
+          nombre: `${hotel.hotel1.nombre || 'Hotel'} + ${hotel.hotel2.nombre || 'Hotel'}`,
+          regimen: `${hotel.hotel1.regimen} / ${hotel.hotel2.regimen}`,
+          precio: hotel.habitaciones[0]?.adl?.venta || 0,
+        }
+      }
+      return { nombre: hotel.nombre || 'Hotel', regimen: hotel.regimen, precio: hotel.habitaciones[0]?.adl?.venta || 0 }
+    })
+
+    setGenerandoComparativa(true)
+    try {
+      const res = await fetch('/api/hoteles-comparativa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ciudad: d.ciudad, pais: d.pais, hoteles: resumen }),
+      }).then(r => r.json()).catch(() => ({ frases: [] }))
+      setComparativaHoteles(res.frases && res.frases.length === hotelesOpciones.length ? res.frases : [])
+    } catch {
+      // no bloquea
+    }
+    setGenerandoComparativa(false)
   }
 
   async function generarLugarHotel(hotelIndex, nombreHotel) {
@@ -482,6 +527,7 @@ function NuevaCotizacionInner() {
     debounceHotel.current[key] = setTimeout(() => {
       generarLugarHotel(hotelIndex, nombreHotel)
       buscarFotoHotel(hotelIndex, nombreHotel)
+      generarComentarioHotel(hotelIndex, nombreHotel)
     }, 3000)
   }
 
@@ -491,6 +537,7 @@ function NuevaCotizacionInner() {
     debounceHotel.current[key] = setTimeout(() => {
       generarLugarHotelDoble(hotelIndex, cual, nombreHotel)
       buscarFotoHotelDoble(hotelIndex, cual, nombreHotel)
+      generarComentarioHotelDoble(hotelIndex, cual, nombreHotel)
     }, 3000)
   }
 
@@ -730,6 +777,7 @@ function NuevaCotizacionInner() {
       familia_tarifaria: familiaTarifaria,
       clima_texto: climaTexto,
       paseos: paseosIA,
+      comparativa_hoteles: comparativaHoteles,
     }
 
     if (tipoDestino === 'unico') {
@@ -879,6 +927,13 @@ function NuevaCotizacionInner() {
             />
           </div>
         </div>
+
+        <SeccionComparativaHoteles
+          hotelesOpciones={hotelesOpciones}
+          comparativaHoteles={comparativaHoteles} setComparativaHoteles={setComparativaHoteles}
+          generandoComparativa={generandoComparativa}
+          onGenerar={generarComparativaHoteles}
+        />
 
         <hr style={{ margin: '1.5rem 0' }} />
 

@@ -141,6 +141,34 @@ function formatearNoIncluye(cotizacion) {
   return `❌ *No incluye:* ${partes.join(' · ')}`
 }
 
+function formatearSenaSaldo(cotizacion) {
+  const cf = cotizacion.costos_fijos || {}
+  if (!cf.boleto) return ''
+
+  const habitaciones = cotizacion.habitaciones || []
+  const hayChd = habitaciones.some(h => h.chd > 0)
+  const hayInf = habitaciones.some(h => h.inf > 0)
+
+  function sena(tipo) {
+    const boleto = Number(cf.boleto?.[tipo]) || 0
+    const seguro = cf.seguro?.checked ? (Number(cf.seguro?.[tipo]) || 0) : 0
+    return boleto + 50 + seguro
+  }
+
+  let linea = `💰 Seña: U$S ${sena('adl')} por adulto`
+  if (hayChd) linea += ` · U$S ${sena('chd')} por niño`
+  if (hayInf) linea += ` · U$S ${sena('inf')} por infante`
+  linea += '.'
+
+  if (cotizacion.fecha_inicio_viaje) {
+    const fecha = new Date(cotizacion.fecha_inicio_viaje + 'T00:00:00')
+    fecha.setDate(fecha.getDate() - 30)
+    linea += ` Saldo hasta el ${formatearFechaCorta(fecha.toISOString().slice(0, 10))}.`
+  }
+
+  return linea
+}
+
 // ---- Habitaciones (composición) ----
 function formatearHabitaciones(habitaciones) {
   if (!habitaciones || habitaciones.length === 0) return ''
@@ -177,11 +205,13 @@ function formatearOpcionUnica(cotizacion, hotel, hi) {
     bloque += linea + '\n'
   })
 
+  const comparativa = cotizacion.comparativa_hoteles?.[hi]
+  if (comparativa) bloque += `${comparativa}\n`
+
   const comentario = hotel.modo === 'doble'
     ? [hotel.hotel1.comentario, hotel.hotel2.comentario].filter(Boolean).join(' ')
     : hotel.comentario
   if (comentario) bloque += `> ${comentario}\n`
-  // ⚠️ Fase D: acá va la frase comparativa entre hoteles generada por IA
 
   const noRef = hotel.modo === 'doble'
     ? (hotel.hotel1.noRefPrepago || hotel.hotel2.noRefPrepago)
@@ -259,6 +289,8 @@ export function generarTextoWhatsapp(cotizacion) {
   secciones.push(formatearIncluye(cotizacion))
   const noIncluye = formatearNoIncluye(cotizacion)
   if (noIncluye) secciones.push(noIncluye)
+  const senaSaldo = formatearSenaSaldo(cotizacion)
+  if (senaSaldo) secciones.push(senaSaldo)
   if (cotizacion.habitaciones?.length > 0) {
     secciones.push(formatearHabitaciones(cotizacion.habitaciones))
   }
@@ -279,6 +311,8 @@ export function generarSeccionesWhatsapp(cotizacion) {
   antesOpciones.push(formatearIncluye(cotizacion))
   const noIncluye = formatearNoIncluye(cotizacion)
   if (noIncluye) antesOpciones.push(noIncluye)
+  const senaSaldo = formatearSenaSaldo(cotizacion)
+  if (senaSaldo) antesOpciones.push(senaSaldo)
   if (cotizacion.habitaciones?.length > 0) {
     antesOpciones.push(formatearHabitaciones(cotizacion.habitaciones))
   }
